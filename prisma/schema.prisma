@@ -1,0 +1,83 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String             @id @default(cuid())
+  email        String?            @unique
+  name         String?
+  plan         Plan               @default(FREE)
+  createdAt    DateTime           @default(now())
+  igAccounts   InstagramAccount[]
+}
+
+model InstagramAccount {
+  id             String      @id @default(cuid())
+  userId         String
+  user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  igUserId       String      @unique
+  igUsername      String
+  igProfilePic   String?
+  followerCount  Int         @default(0)
+  accessToken    String
+  tokenExpiresAt DateTime
+  isActive       Boolean     @default(true)
+  triggers       Trigger[]
+  leads          Lead[]
+  analytics      Analytics[]
+  createdAt      DateTime    @default(now())
+}
+
+model Trigger {
+  id            String           @id @default(cuid())
+  igAccountId   String
+  igAccount     InstagramAccount @relation(fields: [igAccountId], references: [id], onDelete: Cascade)
+  type          TriggerType
+  keywords      String[]
+  replyMessage  String
+  deliverLink   String?
+  followGate    Boolean          @default(false)
+  isActive      Boolean          @default(true)
+  hitCount      Int              @default(0)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  leads         Lead[]
+}
+
+model Lead {
+  id            String           @id @default(cuid())
+  igAccountId   String
+  igAccount     InstagramAccount @relation(fields: [igAccountId], references: [id], onDelete: Cascade)
+  triggerId     String?
+  trigger       Trigger?         @relation(fields: [triggerId], references: [id], onDelete: SetNull)
+  igUserId      String
+  igUsername     String
+  capturedAt    DateTime         @default(now())
+}
+
+model Analytics {
+  id             String           @id @default(cuid())
+  igAccountId    String
+  igAccount      InstagramAccount @relation(fields: [igAccountId], references: [id], onDelete: Cascade)
+  date           DateTime         @default(now())
+  triggersHit    Int              @default(0)
+  leadsCaptured  Int              @default(0)
+  dmsSent        Int              @default(0)
+}
+
+enum Plan {
+  FREE
+  PRO
+}
+
+enum TriggerType {
+  COMMENT
+  DM_KEYWORD
+  STORY_REPLY
+  NEW_FOLLOWER
+}
