@@ -12,7 +12,6 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-import { useState } from "react";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -25,9 +24,14 @@ const navItems = [
 interface SidebarProps {
   collapsed: boolean;
   onToggle: () => void;
+  igAccount?: {
+    igUsername: string;
+    igProfilePic?: string | null;
+    followerCount?: number;
+  } | null;
 }
 
-export function Sidebar({ collapsed, onToggle }: SidebarProps) {
+export function Sidebar({ collapsed, onToggle, igAccount }: SidebarProps) {
   const pathname = usePathname();
 
   return (
@@ -59,6 +63,61 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
         </button>
       </div>
+
+      {/* Connected IG Account */}
+      {igAccount && !collapsed && (
+        <div className="px-3 py-3 border-b border-gray-200 dark:border-gray-800">
+          <div className="flex items-center gap-3 px-2 py-2 rounded-lg bg-gray-50 dark:bg-gray-900">
+            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 p-[2px] flex-shrink-0">
+              <div className="w-full h-full rounded-full bg-white dark:bg-gray-900 flex items-center justify-center overflow-hidden">
+                {igAccount.igProfilePic ? (
+                  <img
+                    src={igAccount.igProfilePic}
+                    alt={igAccount.igUsername}
+                    className="w-full h-full object-cover rounded-full"
+                  />
+                ) : (
+                  <span className="text-sm font-bold text-purple-600">
+                    {igAccount.igUsername.charAt(0).toUpperCase()}
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                @{igAccount.igUsername}
+              </p>
+              {igAccount.followerCount !== undefined && (
+                <p className="text-xs text-gray-400">
+                  {igAccount.followerCount.toLocaleString()} followers
+                </p>
+              )}
+            </div>
+            <div className="ml-auto">
+              <span className="w-2 h-2 rounded-full bg-green-500 block" title="Connected" />
+            </div>
+          </div>
+        </div>
+      )}
+      {igAccount && collapsed && (
+        <div className="px-3 py-3 border-b border-gray-200 dark:border-gray-800 flex justify-center">
+          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 p-[2px]">
+            <div className="w-full h-full rounded-full bg-white dark:bg-gray-900 flex items-center justify-center overflow-hidden">
+              {igAccount.igProfilePic ? (
+                <img
+                  src={igAccount.igProfilePic}
+                  alt={igAccount.igUsername}
+                  className="w-full h-full object-cover rounded-full"
+                />
+              ) : (
+                <span className="text-xs font-bold text-purple-600">
+                  {igAccount.igUsername.charAt(0).toUpperCase()}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Nav items */}
       <nav className="flex-1 py-4 px-3 space-y-1">

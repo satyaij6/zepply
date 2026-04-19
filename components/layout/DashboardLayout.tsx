@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
 import { MobileNav } from "./MobileNav";
@@ -11,12 +11,45 @@ interface DashboardLayoutProps {
   igAccount?: {
     igUsername: string;
     igProfilePic?: string | null;
+    followerCount?: number;
   } | null;
 }
 
-export function DashboardLayout({ children, igAccount }: DashboardLayoutProps) {
+export function DashboardLayout({ children, igAccount: propIgAccount }: DashboardLayoutProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [igAccount, setIgAccount] = useState(propIgAccount || null);
+
+  // If no igAccount was passed as prop, fetch it
+  useEffect(() => {
+    if (!propIgAccount) {
+      fetchIgAccount();
+    }
+  }, [propIgAccount]);
+
+  useEffect(() => {
+    if (propIgAccount) {
+      setIgAccount(propIgAccount);
+    }
+  }, [propIgAccount]);
+
+  const fetchIgAccount = async () => {
+    try {
+      const res = await fetch("/api/settings");
+      if (res.ok) {
+        const user = await res.json();
+        if (user.igAccounts?.[0]) {
+          setIgAccount({
+            igUsername: user.igAccounts[0].igUsername,
+            igProfilePic: user.igAccounts[0].igProfilePic,
+            followerCount: user.igAccounts[0].followerCount,
+          });
+        }
+      }
+    } catch {
+      // Fallback failed silently
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -24,6 +57,7 @@ export function DashboardLayout({ children, igAccount }: DashboardLayoutProps) {
       <Sidebar
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+        igAccount={igAccount}
       />
 
       {/* Mobile nav */}
