@@ -34,11 +34,13 @@ export async function POST(request: NextRequest) {
     const data = JSON.parse(body);
     console.log("📨 Parsed webhook data:", JSON.stringify(data, null, 2));
 
-    // Always respond 200 immediately (Meta requires this)
-    // Process events asynchronously
-    processWebhookEvents(data).catch((err) =>
-      console.error("❌ Webhook processing error:", err)
-    );
+    // Await processing so serverless function doesn't terminate early.
+    // Meta allows up to 20 seconds for webhook response.
+    try {
+      await processWebhookEvents(data);
+    } catch (err) {
+      console.error("❌ Webhook processing error:", err);
+    }
 
     return NextResponse.json({ received: true }, { status: 200 });
   } catch (error) {
