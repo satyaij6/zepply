@@ -263,9 +263,16 @@ export function verifyWebhookSignature(
   signature: string
 ): boolean {
   const crypto = require("crypto");
-  const expectedSig = crypto
-    .createHmac("sha256", process.env.META_FB_APP_SECRET!)
-    .update(payload)
-    .digest("hex");
-  return `sha256=${expectedSig}` === signature;
+  const secrets = [
+    process.env.META_APP_SECRET,
+    process.env.META_FB_APP_SECRET,
+  ].filter(Boolean);
+
+  return secrets.some((secret) => {
+    const expectedSig = crypto
+      .createHmac("sha256", secret!)
+      .update(payload)
+      .digest("hex");
+    return `sha256=${expectedSig}` === signature;
+  });
 }
