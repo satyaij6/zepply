@@ -5,7 +5,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 export async function sendWelcomeEmail(email: string, name?: string) {
   try {
     await resend.emails.send({
-      from: "Zepply <onboarding@zepply.app>",
+      from: "Zepply <onboarding@zeply.app>",
       to: email,
       subject: "Welcome to Zepply! 🚀",
       html: `
@@ -49,7 +49,7 @@ export async function sendLeadAlertEmail(
 ) {
   try {
     await resend.emails.send({
-      from: "Zepply <alerts@zepply.app>",
+      from: "Zepply <alerts@zeply.app>",
       to: email,
       subject: `🎯 New lead captured: @${leadUsername}`,
       html: `
@@ -78,7 +78,7 @@ export async function sendLeadAlertEmail(
 export async function sendMagicLinkEmail(email: string, url: string) {
   try {
     await resend.emails.send({
-      from: "Zepply <login@zepply.app>",
+      from: "Zepply <login@zeply.app>",
       to: email,
       subject: "Sign in to Zepply",
       html: `
