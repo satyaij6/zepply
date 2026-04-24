@@ -24,6 +24,7 @@ interface TriggerResult {
 export async function processTriggerEvent(
   event: IncomingEvent
 ): Promise<TriggerResult> {
+  console.log(`⚡ processTriggerEvent type=${event.type} text="${event.text}" sender=${event.senderUsername}`);
   try {
     // 1. Find the Instagram account
     const igAccount = await prisma.instagramAccount.findUnique({
@@ -32,8 +33,10 @@ export async function processTriggerEvent(
     });
 
     if (!igAccount || !igAccount.isActive) {
+      console.warn(`❌ Account not found or inactive. igAccountId=${event.igAccountId}`);
       return { matched: false, replySent: false, leadCaptured: false };
     }
+    console.log(`✅ Account active: ${igAccount.igUsername}`);
 
     // 2. Find matching active triggers
     const triggers = await prisma.trigger.findMany({
@@ -43,8 +46,10 @@ export async function processTriggerEvent(
         isActive: true,
       },
     });
+    console.log(`📋 Found ${triggers.length} active ${event.type} triggers`);
 
     if (triggers.length === 0) {
+      console.warn(`❌ No active triggers of type ${event.type}`);
       return { matched: false, replySent: false, leadCaptured: false };
     }
 
@@ -73,6 +78,7 @@ export async function processTriggerEvent(
         text.includes(kw.toLowerCase())
       );
 
+      console.log(`🔍 Checking keywords [${trigger.keywords.join(",")}] against "${event.text}" → match=${keywordMatch}`);
       if (keywordMatch) {
         matchedTrigger = trigger;
         break;
@@ -80,8 +86,10 @@ export async function processTriggerEvent(
     }
 
     if (!matchedTrigger) {
+      console.warn(`❌ No keyword match for text: "${event.text}"`);
       return { matched: false, replySent: false, leadCaptured: false };
     }
+    console.log(`✅ Matched trigger: ${matchedTrigger.id}, reply: "${matchedTrigger.replyMessage}"`);
 
     // 4. Follow-gate check (for comments only)
     if (matchedTrigger.followGate && event.type === "COMMENT") {
@@ -111,18 +119,20 @@ export async function processTriggerEvent(
     let replySent = false;
     try {
       if (event.type === "COMMENT" && event.commentId) {
-        // Reply to comment, then always send DM
+        console.log(`💬 Replying to comment ${event.commentId}...`);
         await replyToComment(
           event.commentId,
           matchedTrigger.replyMessage,
           igAccount.accessToken
         );
+        console.log(`✅ Comment reply sent. Now sending DM to ${event.senderIgUserId}...`);
         await sendDM(
           igAccount.igUserId,
           event.senderIgUserId,
           replyText,
           igAccount.accessToken
         );
+        console.log(`✅ DM sent successfully!`);
       } else {
         // Send DM for DM_KEYWORD, STORY_REPLY, NEW_FOLLOWER
         await sendDM(

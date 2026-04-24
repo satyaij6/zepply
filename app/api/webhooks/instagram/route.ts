@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.text();
+    console.log("📨 WEBHOOK RECEIVED. Body:", body);
 
     // Verify signature
     const signature = request.headers.get("x-hub-signature-256");
@@ -31,47 +32,58 @@ export async function POST(request: NextRequest) {
     }
 
     const data = JSON.parse(body);
+    console.log("📨 Parsed webhook data:", JSON.stringify(data, null, 2));
 
     // Always respond 200 immediately (Meta requires this)
     // Process events asynchronously
     processWebhookEvents(data).catch((err) =>
-      console.error("Webhook processing error:", err)
+      console.error("❌ Webhook processing error:", err)
     );
 
     return NextResponse.json({ received: true }, { status: 200 });
   } catch (error) {
-    console.error("Webhook error:", error);
+    console.error("❌ Webhook error:", error);
     return NextResponse.json({ received: true }, { status: 200 });
   }
 }
 
 async function processWebhookEvents(data: any) {
-  if (!data.entry) return;
+  console.log("🔄 processWebhookEvents START");
+  if (!data.entry) {
+    console.warn("⚠️ No entry in webhook data");
+    return;
+  }
 
   for (const entry of data.entry) {
     const igUserId = entry.id;
+    console.log(`🔍 Looking up IG account by id: ${igUserId}`);
 
     // Find the Instagram account in our DB
     const igAccount = await findIgAccountByIgUserId(igUserId);
     if (!igAccount) {
-      console.warn(`No account found for IG user ID: ${igUserId}`);
+      console.warn(`❌ No account found for IG user ID: ${igUserId}`);
       continue;
     }
+    console.log(`✅ Found account: ${igAccount.igUsername} (internal id: ${igAccount.id})`);
 
     // Process changes
     if (entry.changes) {
+      console.log(`📋 Processing ${entry.changes.length} changes`);
       for (const change of entry.changes) {
+        console.log(`📋 Change field: ${change.field}, value:`, JSON.stringify(change.value));
         await processChange(change, igAccount.id, igUserId);
       }
     }
 
     // Process messaging events
     if (entry.messaging) {
+      console.log(`💬 Processing ${entry.messaging.length} messaging events`);
       for (const messagingEvent of entry.messaging) {
         await processMessaging(messagingEvent, igAccount.id);
       }
     }
   }
+  console.log("🔄 processWebhookEvents END");
 }
 
 async function processChange(change: any, igAccountId: string, igUserId: string) {
