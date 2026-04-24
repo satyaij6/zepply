@@ -111,21 +111,18 @@ export async function processTriggerEvent(
     let replySent = false;
     try {
       if (event.type === "COMMENT" && event.commentId) {
-        // Reply to comment, then also send DM
+        // Reply to comment, then always send DM
         await replyToComment(
           event.commentId,
+          matchedTrigger.replyMessage,
+          igAccount.accessToken
+        );
+        await sendDM(
+          igAccount.igUserId,
+          event.senderIgUserId,
           replyText,
           igAccount.accessToken
         );
-        // Also send DM with the link
-        if (matchedTrigger.deliverLink) {
-          await sendDM(
-            igAccount.igUserId,
-            event.senderIgUserId,
-            replyText,
-            igAccount.accessToken
-          );
-        }
       } else {
         // Send DM for DM_KEYWORD, STORY_REPLY, NEW_FOLLOWER
         await sendDM(
@@ -166,24 +163,35 @@ export async function processTriggerEvent(
     // 9. Log analytics
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today.getTime() + 86400000);
 
-    await prisma.analytics.upsert({
+    const existingAnalytics = await prisma.analytics.findFirst({
       where: {
-        id: `${event.igAccountId}_${today.toISOString().split("T")[0]}`,
-      },
-      create: {
         igAccountId: event.igAccountId,
-        date: today,
-        triggersHit: 1,
-        leadsCaptured: 1,
-        dmsSent: replySent ? 1 : 0,
-      },
-      update: {
-        triggersHit: { increment: 1 },
-        leadsCaptured: { increment: 1 },
-        dmsSent: replySent ? { increment: 1 } : undefined,
+        date: { gte: today, lt: tomorrow },
       },
     });
+
+    if (existingAnalytics) {
+      await prisma.analytics.update({
+        where: { id: existingAnalytics.id },
+        data: {
+          triggersHit: { increment: 1 },
+          leadsCaptured: { increment: 1 },
+          dmsSent: replySent ? { increment: 1 } : undefined,
+        },
+      });
+    } else {
+      await prisma.analytics.create({
+        data: {
+          igAccountId: event.igAccountId,
+          date: today,
+          triggersHit: 1,
+          leadsCaptured: 1,
+          dmsSent: replySent ? 1 : 0,
+        },
+      });
+    }
 
     return {
       matched: true,

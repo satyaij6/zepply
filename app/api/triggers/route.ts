@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { cookies } from "next/headers";
 import { z } from "zod";
 
 const createTriggerSchema = z.object({
@@ -10,68 +10,131 @@ const createTriggerSchema = z.object({
   replyMessage: z.string().min(1).max(500),
   deliverLink: z.string().url().optional().or(z.literal("")),
   followGate: z.boolean().default(false),
+  postScope: z.enum(["specific", "next", "any"]).optional(),
+  selectedPostId: z.string().nullable().optional(),
 });
 
-// GET — List all triggers for the authenticated user
+// Shared in-memory store for local dev (when DB is unreachable)
+export let localTriggers: any[] = [];
+
+// GET — List all triggers
 export async function GET(request: NextRequest) {
   const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
 
   const searchParams = request.nextUrl.searchParams;
   const type = searchParams.get("type");
 
-  const triggers = await prisma.trigger.findMany({
-    where: {
-      igAccount: { userId: session.user.id },
-      ...(type ? { type: type as any } : {}),
-    },
-    include: {
-      igAccount: { select: { igUsername: true } },
-      _count: { select: { leads: true } },
-    },
-    orderBy: { createdAt: "desc" },
-  });
+  // Try database first
+  try {
+    const prismaModule = await import("@/lib/prisma");
+    const db = prismaModule.default;
 
-  return NextResponse.json(triggers);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const triggers = await db.trigger.findMany({
+      where: {
+        igAccount: { userId: session.user.id },
+        ...(type ? { type: type as any } : {}),
+      },
+      include: {
+        igAccount: { select: { igUsername: true } },
+        _count: { select: { leads: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return NextResponse.json(triggers);
+  } catch {
+    console.warn("⚠️ Triggers GET: DB unreachable, using local store");
+  }
+
+  // Fallback: return local triggers
+  const filtered = type
+    ? localTriggers.filter((t) => t.type === type)
+    : localTriggers;
+
+  return NextResponse.json(filtered);
 }
 
 // POST — Create a new trigger
 export async function POST(request: NextRequest) {
   const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
 
   try {
     const body = await request.json();
     const data = createTriggerSchema.parse(body);
 
-    // Verify the IG account belongs to this user
-    const igAccount = await prisma.instagramAccount.findFirst({
-      where: { id: data.igAccountId, userId: session.user.id },
-    });
+    // Try database first
+    try {
+      const prismaModule = await import("@/lib/prisma");
+      const db = prismaModule.default;
 
-    if (!igAccount) {
-      return NextResponse.json(
-        { error: "Instagram account not found" },
-        { status: 404 }
-      );
+      if (!session?.user?.id) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+
+      // Verify the IG account belongs to this user
+      const igAccount = await db.instagramAccount.findFirst({
+        where: { id: data.igAccountId, userId: session.user.id },
+      });
+
+      if (!igAccount) {
+        return NextResponse.json(
+          { error: "Instagram account not found" },
+          { status: 404 }
+        );
+      }
+
+      const trigger = await db.trigger.create({
+        data: {
+          igAccountId: data.igAccountId,
+          type: data.type,
+          keywords: data.keywords.filter((k) => k.trim() !== ""),
+          replyMessage: data.replyMessage,
+          deliverLink: data.deliverLink || null,
+          followGate: data.followGate,
+        },
+      });
+
+      return NextResponse.json(trigger, { status: 201 });
+    } catch (dbError) {
+      console.warn("⚠️ Triggers POST: DB unreachable, saving locally");
     }
 
-    const trigger = await prisma.trigger.create({
-      data: {
-        igAccountId: data.igAccountId,
-        type: data.type,
-        keywords: data.keywords.filter((k) => k.trim() !== ""),
-        replyMessage: data.replyMessage,
-        deliverLink: data.deliverLink || null,
-        followGate: data.followGate,
-      },
-    });
+    // Fallback: save to local memory store
+    const localTrigger = {
+      id: `local_${Date.now()}`,
+      igAccountId: data.igAccountId,
+      type: data.type,
+      keywords: data.keywords.filter((k) => k.trim() !== ""),
+      replyMessage: data.replyMessage,
+      deliverLink: data.deliverLink || null,
+      followGate: data.followGate,
+      postScope: data.postScope || "any",
+      selectedPostId: data.selectedPostId || null,
+      isActive: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      igAccount: { igUsername: "aytas.io" },
+      _count: { leads: 0 },
+    };
 
-    return NextResponse.json(trigger, { status: 201 });
+    // Try to get username from cookie
+    const cookieStore = await cookies();
+    const userCookie = cookieStore.get("zepply_user");
+    if (userCookie) {
+      try {
+        const userData = JSON.parse(userCookie.value);
+        localTrigger.igAccount.igUsername = userData.igUsername || "aytas.io";
+      } catch {}
+    }
+
+    localTriggers.push(localTrigger);
+    console.log("✅ Trigger saved locally:", localTrigger.type, localTrigger.keywords);
+
+    return NextResponse.json(localTrigger, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
