@@ -73,9 +73,18 @@ export function TriggerCard({ trigger, onToggle, onEdit, onDelete }: TriggerCard
           {/* Active toggle */}
           <button
             onClick={() => onToggle(trigger.id)}
-            className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
-              trigger.isActive ? "bg-[#22C55E]" : "bg-[#D1D5DB]"
-            }`}
+            style={{
+              position: "relative",
+              width: "44px",
+              height: "24px",
+              borderRadius: "12px",
+              backgroundColor: trigger.isActive ? "#22C55E" : "#D1D5DB",
+              border: "none",
+              cursor: "pointer",
+              flexShrink: 0,
+              transition: "background-color 0.2s",
+              padding: 0,
+            }}
           >
             <span
               style={{
@@ -84,10 +93,10 @@ export function TriggerCard({ trigger, onToggle, onEdit, onDelete }: TriggerCard
                 left: trigger.isActive ? "22px" : "2px",
                 width: "20px",
                 height: "20px",
-                borderRadius: "9999px",
+                borderRadius: "50%",
                 backgroundColor: "white",
                 boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
-                transition: "left 0.2s",
+                transition: "left 0.2s ease",
               }}
             />
           </button>
