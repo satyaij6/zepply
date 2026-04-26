@@ -19,3 +19,8 @@ body {
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+
+@keyframes zep-shimmer {
+  0%   { left: -60%; }
+  100% { left: 110%; }
+}
