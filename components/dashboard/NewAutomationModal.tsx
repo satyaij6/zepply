@@ -60,7 +60,6 @@ interface Props {
 
 export function NewAutomationModal({ isOpen, onClose }: Props) {
   const router = useRouter();
-  const [selected, setSelected] = useState<TriggerType | null>(null);
   const [query, setQuery] = useState("");
   const [animate, setAnimate] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -72,7 +71,6 @@ export function NewAutomationModal({ isOpen, onClose }: Props) {
       return () => clearTimeout(t);
     } else {
       setAnimate(false);
-      setSelected(null);
       setQuery("");
     }
   }, [isOpen]);
@@ -86,26 +84,21 @@ export function NewAutomationModal({ isOpen, onClose }: Props) {
   }, [isOpen, onClose]);
 
   useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
+    if (isOpen) document.body.style.overflow = "hidden";
+    else document.body.style.overflow = "";
     return () => { document.body.style.overflow = ""; };
   }, [isOpen]);
 
-  const handleContinue = () => {
-    if (!selected) return;
+  const handleCardClick = (id: TriggerType) => {
     onClose();
-    router.push(`/dashboard/triggers?type=${selected}`);
+    router.push(`/dashboard/triggers/new?type=${id}`);
   };
 
   const q = query.toLowerCase().trim();
   const visibleCards = TRIGGER_CARDS.filter(
     (c) => !q || (c.name + " " + c.desc + " " + c.tag).toLowerCase().includes(q)
   );
-  const showLockedCard =
-    !q || "ai conversation mode ai trigger autopilot".includes(q);
+  const showLockedCard = !q || "ai conversation mode ai trigger autopilot".includes(q);
   const showEmpty = visibleCards.length === 0 && !showLockedCard;
 
   return (
@@ -127,7 +120,7 @@ export function NewAutomationModal({ isOpen, onClose }: Props) {
         <div className="flex items-start justify-between">
           <div>
             <h2 className="text-[20px] font-extrabold text-[#0F1B4C]">New Automation</h2>
-            <p className="text-[14px] text-[#6B7280] mt-1">Choose a trigger to start building</p>
+            <p className="text-[14px] text-[#6B7280] mt-1">Click a trigger to start building</p>
           </div>
           <button
             onClick={onClose}
@@ -177,69 +170,46 @@ export function NewAutomationModal({ isOpen, onClose }: Props) {
               Automation Triggers
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
-              {visibleCards.map((card) => {
-                const isSelected = selected === card.id;
-                return (
-                  <button
-                    key={card.id}
-                    onClick={() => setSelected(isSelected ? null : card.id)}
-                    className={`group relative text-left rounded-2xl p-[22px] cursor-pointer transition-all duration-[180ms] outline-none focus-visible:ring-2 focus-visible:ring-[#3D7EFF] ${
-                      isSelected
-                        ? "border-2 border-[#3D7EFF] bg-[#EEF2FF] -translate-y-0.5 shadow-[0_8px_24px_rgba(61,126,255,0.12)]"
-                        : "border-[1.5px] border-[#E5E7EB] bg-white hover:border-[#3D7EFF] hover:bg-[#F8FAFF] hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(61,126,255,0.1)]"
-                    }`}
-                  >
-                    {/* Checkmark badge */}
-                    <span
-                      className={`absolute -top-2 -right-2 w-5 h-5 rounded-full bg-[#3D7EFF] flex items-center justify-center transition-transform ${
-                        isSelected ? "scale-100" : "scale-0"
-                      }`}
-                      style={{ transitionTimingFunction: "cubic-bezier(0.34,1.56,0.64,1)", transitionDuration: "200ms" }}
+              {visibleCards.map((card) => (
+                <button
+                  key={card.id}
+                  onClick={() => handleCardClick(card.id)}
+                  className="group relative text-left rounded-2xl p-[22px] cursor-pointer transition-all duration-[180ms] outline-none focus-visible:ring-2 focus-visible:ring-[#3D7EFF] border-[1.5px] border-[#E5E7EB] bg-white hover:border-[#3D7EFF] hover:bg-[#F8FAFF] hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(61,126,255,0.1)]"
+                >
+                  {/* Top row */}
+                  <div className="flex items-start justify-between">
+                    <div
+                      className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+                      style={{ background: card.iconBg }}
                     >
-                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                        <path d="M1.5 5l2.5 2.5 5-5" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                      {card.icon}
+                    </div>
+                    {card.badge && (
+                      <span className={`text-[10px] font-bold tracking-[0.3px] uppercase px-2.5 py-1 rounded-full ${card.badgeStyle}`}>
+                        {card.badge}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Content */}
+                  <div className="mt-3.5">
+                    <p className="text-[16px] font-bold text-[#0F1B4C] tracking-[-0.2px]">{card.name}</p>
+                    <p className="text-[13px] text-[#6B7280] leading-[1.65] mt-1.5">{card.desc}</p>
+                  </div>
+
+                  {/* Bottom row */}
+                  <div className="flex items-center justify-between mt-4">
+                    <span className="bg-[#F3F4F6] text-[#6B7280] text-[11px] font-semibold px-2.5 py-1 rounded-md">
+                      {card.tag}
+                    </span>
+                    <span className="text-[#3D7EFF] opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all duration-150">
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <path d="M3 8h10M9 4l4 4-4 4" stroke="#3D7EFF" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
                     </span>
-
-                    {/* Top row */}
-                    <div className="flex items-start justify-between">
-                      <div
-                        className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
-                        style={{ background: card.iconBg }}
-                      >
-                        {card.icon}
-                      </div>
-                      {card.badge && (
-                        <span className={`text-[10px] font-bold tracking-[0.3px] uppercase px-2.5 py-1 rounded-full ${card.badgeStyle}`}>
-                          {card.badge}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Content */}
-                    <div className="mt-3.5">
-                      <p className="text-[16px] font-bold text-[#0F1B4C] tracking-[-0.2px]">{card.name}</p>
-                      <p className="text-[13px] text-[#6B7280] leading-[1.65] mt-1.5">{card.desc}</p>
-                    </div>
-
-                    {/* Bottom row */}
-                    <div className="flex items-center justify-between mt-4">
-                      <span className="bg-[#F3F4F6] text-[#6B7280] text-[11px] font-semibold px-2.5 py-1 rounded-md">
-                        {card.tag}
-                      </span>
-                      <span
-                        className={`text-[#3D7EFF] transition-all duration-150 ${
-                          isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5"
-                        }`}
-                      >
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                          <path d="M3 8h10M9 4l4 4-4 4" stroke="#3D7EFF" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                      </span>
-                    </div>
-                  </button>
-                );
-              })}
+                  </div>
+                </button>
+              ))}
             </div>
           </div>
         )}
@@ -250,20 +220,15 @@ export function NewAutomationModal({ isOpen, onClose }: Props) {
             <p className="text-[11px] font-bold tracking-[1.5px] uppercase text-[#9CA3AF] mb-3.5">
               Coming Soon
             </p>
-
-            {/* Tooltip wrapper */}
             <div className="relative group/locked">
               <div className="absolute -top-11 left-1/2 -translate-x-1/2 bg-white border border-[#E5E7EB] rounded-xl px-3.5 py-2 text-[12px] text-[#374151] whitespace-nowrap shadow-md pointer-events-none opacity-0 group-hover/locked:opacity-100 transition-opacity z-10">
-                AI Conversation Mode is on a separate page — launching in the next update!
+                AI Conversation Mode is launching in the next update!
                 <span className="absolute top-full left-1/2 -translate-x-1/2 border-[6px] border-transparent border-t-white" />
               </div>
-
-              {/* Locked card */}
               <div
                 className="relative overflow-hidden rounded-2xl border-[1.5px] border-[#DDD8FF] px-7 py-6 pr-24"
                 style={{ background: "linear-gradient(135deg, #F8F7FF 0%, #F0EEFF 100%)" }}
               >
-                {/* Shimmer */}
                 <div className="absolute inset-0 overflow-hidden pointer-events-none">
                   <div
                     className="absolute top-0 h-full w-[60%]"
@@ -273,13 +238,9 @@ export function NewAutomationModal({ isOpen, onClose }: Props) {
                     }}
                   />
                 </div>
-
-                {/* Coming Soon badge */}
                 <span className="absolute top-4 right-4 bg-[#7C6FFF] text-white text-[11px] font-extrabold tracking-[1px] uppercase px-3 py-1.5 rounded-full">
                   Coming Soon
                 </span>
-
-                {/* Lock icon */}
                 <div className="absolute right-6 top-1/2 -translate-y-1/2 w-9 h-9 rounded-[10px] flex items-center justify-center" style={{ background: "rgba(124,111,255,0.12)", border: "1px solid rgba(124,111,255,0.25)" }}>
                   <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
                     <rect x="4" y="8" width="10" height="8" rx="2" stroke="#7C6FFF" strokeWidth="1.5" />
@@ -287,26 +248,17 @@ export function NewAutomationModal({ isOpen, onClose }: Props) {
                     <circle cx="9" cy="12" r="1" fill="#7C6FFF" />
                   </svg>
                 </div>
-
-                {/* Icon */}
-                <div
-                  className="w-11 h-11 rounded-xl flex items-center justify-center"
-                  style={{ background: "linear-gradient(135deg, #EDE9FF 0%, #DDD6FF 100%)" }}
-                >
+                <div className="w-11 h-11 rounded-xl flex items-center justify-center" style={{ background: "linear-gradient(135deg, #EDE9FF 0%, #DDD6FF 100%)" }}>
                   <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
                     <path d="M11 3l1.2 3.6L16 8l-3.8 1.2L11 13l-1.2-3.8L6 8l3.8-1.4L11 3z" stroke="#7C6FFF" strokeWidth="1.5" strokeLinejoin="round" fill="none" />
                     <path d="M5 14l0.7 2.1L8 17l-2.3 0.9L5 20l-0.7-2.1L2 17l2.3-0.9L5 14z" stroke="#7C6FFF" strokeWidth="1.3" strokeLinejoin="round" fill="none" />
                     <path d="M17 3l0.6 1.8L19.5 6l-1.9.8L17 9l-.6-2.2L14.5 6l1.9-.8L17 3z" stroke="#7C6FFF" strokeWidth="1.2" strokeLinejoin="round" fill="none" />
                   </svg>
                 </div>
-
-                <p className="text-[16px] font-extrabold text-[#4C3D99] tracking-[-0.3px] mt-3.5">
-                  AI Conversation Mode
-                </p>
+                <p className="text-[16px] font-extrabold text-[#4C3D99] tracking-[-0.3px] mt-3.5">AI Conversation Mode</p>
                 <p className="text-[13px] text-[#6B6B99] leading-[1.65] mt-1.5">
-                  Once your trigger fires and a follower replies with a real question, Zepply&apos;s AI takes over — understanding their message, responding naturally in your voice, capturing leads, and closing sales. No scripts. No buttons. A real conversation on autopilot.
+                  Once your trigger fires and a follower replies with a real question, Zepply&apos;s AI takes over — understanding their message, responding naturally in your voice, capturing leads, and closing sales.
                 </p>
-
                 <div className="flex items-center gap-2 mt-4 flex-wrap">
                   <span className="text-[11px] font-semibold px-3 py-1.5 rounded-full" style={{ background: "rgba(124,111,255,0.1)", border: "1px solid rgba(124,111,255,0.2)", color: "#7C6FFF" }}>💬 Trigger fires</span>
                   <span className="text-[#A89FFF] text-[12px] font-semibold">→</span>
@@ -334,30 +286,17 @@ export function NewAutomationModal({ isOpen, onClose }: Props) {
 
         {/* Footer */}
         <div className="h-px bg-[#F3F4F6] mt-6" />
-        <div className="pt-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="pt-5 flex items-center justify-between gap-4">
           <p className="text-[13px] text-[#9CA3AF]">
             Not sure which to pick?{" "}
             <button className="text-[#3D7EFF] hover:underline">See examples →</button>
           </p>
-          <div className="flex gap-2.5 w-full sm:w-auto flex-col-reverse sm:flex-row">
-            <button
-              onClick={onClose}
-              className="px-6 py-2.5 bg-white text-[#374151] border border-[#E5E7EB] rounded-full text-sm font-medium hover:bg-[#F9FAFB] transition-colors text-center"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleContinue}
-              disabled={!selected}
-              className={`px-7 py-2.5 rounded-full text-sm font-bold transition-all text-center ${
-                selected
-                  ? "bg-[#3D7EFF] text-white hover:bg-[#2563EB] cursor-pointer active:scale-[0.98]"
-                  : "bg-[#E5E7EB] text-[#9CA3AF] cursor-not-allowed"
-              }`}
-            >
-              Continue →
-            </button>
-          </div>
+          <button
+            onClick={onClose}
+            className="px-6 py-2.5 bg-white text-[#374151] border border-[#E5E7EB] rounded-full text-sm font-medium hover:bg-[#F9FAFB] transition-colors"
+          >
+            Cancel
+          </button>
         </div>
       </div>
     </div>
