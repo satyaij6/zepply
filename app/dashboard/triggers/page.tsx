@@ -44,16 +44,24 @@ export default function TriggersPage() {
   };
 
   const handleToggle = async (id: string) => {
+    // Optimistic update — flip immediately for instant feedback
+    setTriggers((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, isActive: !t.isActive } : t))
+    );
     try {
       const res = await fetch(`/api/triggers/${id}`, { method: "PATCH" });
-      if (res.ok) {
-        const updated = await res.json();
+      if (!res.ok) {
+        // Revert on failure
         setTriggers((prev) =>
-          prev.map((t) => (t.id === id ? { ...t, isActive: updated.isActive } : t))
+          prev.map((t) => (t.id === id ? { ...t, isActive: !t.isActive } : t))
         );
       }
     } catch (err) {
       console.error(err);
+      // Revert on error
+      setTriggers((prev) =>
+        prev.map((t) => (t.id === id ? { ...t, isActive: !t.isActive } : t))
+      );
     }
   };
 

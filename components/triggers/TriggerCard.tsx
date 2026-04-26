@@ -78,8 +78,8 @@ export function TriggerCard({ trigger, onToggle, onEdit, onDelete }: TriggerCard
             }`}
           >
             <span
-              className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform ${
-                trigger.isActive ? "translate-x-5" : "translate-x-0"
+              className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                trigger.isActive ? "translate-x-[22px]" : "translate-x-[2px]"
               }`}
             />
           </button>
