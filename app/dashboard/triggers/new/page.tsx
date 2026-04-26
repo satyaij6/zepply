@@ -758,9 +758,32 @@ function Toggle({ on, onToggle, green }: { on: boolean; onToggle: () => void; gr
   return (
     <button
       onClick={onToggle}
-      className={`w-9 h-5 rounded-full relative flex-shrink-0 transition-colors mt-0.5 ${on ? (green ? "bg-[#22C55E]" : "bg-[#3D7EFF]") : "bg-[#D1D5DB]"}`}
+      style={{
+        position: "relative",
+        width: "36px",
+        height: "20px",
+        borderRadius: "10px",
+        backgroundColor: on ? (green ? "#22C55E" : "#3D7EFF") : "#D1D5DB",
+        border: "none",
+        cursor: "pointer",
+        flexShrink: 0,
+        transition: "background-color 0.2s",
+        padding: 0,
+      }}
     >
-      <span className={`absolute top-[3px] w-3.5 h-3.5 bg-white rounded-full shadow transition-transform ${on ? "translate-x-[18px]" : "translate-x-[3px]"}`} />
+      <span
+        style={{
+          position: "absolute",
+          top: "3px",
+          left: on ? "19px" : "3px",
+          width: "14px",
+          height: "14px",
+          borderRadius: "50%",
+          backgroundColor: "white",
+          boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+          transition: "left 0.2s ease",
+        }}
+      />
     </button>
   );
 }
