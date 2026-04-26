@@ -11,17 +11,17 @@ const types = [
 ] as const;
 
 const colorMap: Record<string, string> = {
-  purple: "border-purple-200 bg-purple-50 text-purple-700 dark:border-purple-800 dark:bg-purple-900/20 dark:text-purple-300",
-  blue: "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-300",
-  green: "border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-900/20 dark:text-green-300",
-  orange: "border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-800 dark:bg-orange-900/20 dark:text-orange-300",
+  purple: "border-[#E9D5FF] bg-[#F3E8FF] text-[#7C3AED]",
+  blue: "border-[#BFDBFE] bg-[#EEF2FF] text-[#3D7EFF]",
+  green: "border-[#BBF7D0] bg-[#F0FDF4] text-[#16A34A]",
+  orange: "border-[#FED7AA] bg-[#FFF7ED] text-[#EA580C]",
 };
 
 const selectedColorMap: Record<string, string> = {
-  purple: "border-purple-500 bg-purple-100 text-purple-800 dark:border-purple-400 dark:bg-purple-900/40 dark:text-purple-200",
-  blue: "border-blue-500 bg-blue-100 text-blue-800 dark:border-blue-400 dark:bg-blue-900/40 dark:text-blue-200",
-  green: "border-green-500 bg-green-100 text-green-800 dark:border-green-400 dark:bg-green-900/40 dark:text-green-200",
-  orange: "border-orange-500 bg-orange-100 text-orange-800 dark:border-orange-400 dark:bg-orange-900/40 dark:text-orange-200",
+  purple: "border-[#7C3AED] bg-[#EDE9FE] text-[#6D28D9]",
+  blue: "border-[#3D7EFF] bg-[#DBEAFE] text-[#1D4ED8]",
+  green: "border-[#22C55E] bg-[#DCFCE7] text-[#15803D]",
+  orange: "border-[#EA580C] bg-[#FFEDD5] text-[#C2410C]",
 };
 
 interface TriggerTypeSelectorProps {

@@ -1,12 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { EmptyState } from "@/components/shared/EmptyState";
 import { ConfirmModal } from "@/components/shared/ConfirmModal";
 import { TriggerCard } from "@/components/triggers/TriggerCard";
-import { TriggerSlideOver } from "@/components/triggers/TriggerSlideOver";
+import { NewAutomationModal } from "@/components/dashboard/NewAutomationModal";
 import { Zap, Plus } from "lucide-react";
 
 const filterTabs = [
@@ -18,40 +17,17 @@ const filterTabs = [
 ];
 
 export default function TriggersPage() {
+  const router = useRouter();
   const [triggers, setTriggers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("");
-  const [slideOverOpen, setSlideOverOpen] = useState(false);
-  const [editingTrigger, setEditingTrigger] = useState<any>(null);
+  const [modalOpen, setModalOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const [igAccountId, setIgAccountId] = useState("");
 
   useEffect(() => {
     fetchTriggers();
-    fetchIgAccount();
   }, [filter]);
-
-  const fetchIgAccount = async () => {
-    try {
-      const res = await fetch("/api/dashboard/stats");
-      if (res.ok) {
-        const data = await res.json();
-        if (data.igAccount) {
-          // We need the igAccount ID, fetch from settings
-          const settingsRes = await fetch("/api/settings");
-          if (settingsRes.ok) {
-            const user = await settingsRes.json();
-            if (user.igAccounts?.[0]) {
-              setIgAccountId(user.igAccounts[0].id);
-            }
-          }
-        }
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  };
 
   const fetchTriggers = async () => {
     try {
@@ -81,29 +57,8 @@ export default function TriggersPage() {
     }
   };
 
-  const handleSave = async (data: any) => {
-    const isEdit = !!editingTrigger;
-    const url = isEdit ? `/api/triggers/${editingTrigger.id}` : "/api/triggers";
-    const method = isEdit ? "PUT" : "POST";
-
-    const res = await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...data, igAccountId }),
-    });
-
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.error || "Failed to save");
-    }
-
-    await fetchTriggers();
-    setEditingTrigger(null);
-  };
-
   const handleEdit = (trigger: any) => {
-    setEditingTrigger(trigger);
-    setSlideOverOpen(true);
+    router.push(`/dashboard/triggers/${trigger.id}`);
   };
 
   const handleDelete = async () => {
@@ -122,21 +77,21 @@ export default function TriggersPage() {
 
   return (
     <DashboardLayout>
-      <PageHeader
-        title="Triggers"
-        description="Auto-reply to comments, DMs, story replies, and new followers."
-        action={
-          <button
-            onClick={() => {
-              setEditingTrigger(null);
-              setSlideOverOpen(true);
-            }}
-            className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 transition-colors"
-          >
-            <Plus className="w-4 h-4" /> New Trigger
-          </button>
-        }
-      />
+      {/* Page header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <div>
+          <h1 className="text-[24px] font-bold text-[#0F1B4C]">Automations</h1>
+          <p className="text-sm text-[#6B7280] mt-1">
+            Auto-reply to comments, DMs, story replies, and new followers.
+          </p>
+        </div>
+        <button
+          onClick={() => setModalOpen(true)}
+          className="flex items-center gap-1.5 px-4 py-2.5 bg-[#3D7EFF] text-white rounded-full text-sm font-semibold hover:opacity-90 transition-opacity self-start sm:self-auto"
+        >
+          <Plus className="w-4 h-4" /> New Automation
+        </button>
+      </div>
 
       {/* Filter tabs */}
       <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
@@ -144,10 +99,10 @@ export default function TriggersPage() {
           <button
             key={tab.value}
             onClick={() => setFilter(tab.value)}
-            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors whitespace-nowrap ${
+            className={`px-4 py-2 text-sm font-medium rounded-full transition-all whitespace-nowrap ${
               filter === tab.value
-                ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300"
-                : "text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800"
+                ? "bg-[#3D7EFF] text-white"
+                : "bg-white text-[#6B7280] border border-[#E5E7EB] hover:border-[#3D7EFF] hover:text-[#3D7EFF]"
             }`}
           >
             {tab.label}
@@ -157,25 +112,27 @@ export default function TriggersPage() {
 
       {/* Triggers list */}
       {loading ? (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-32 bg-gray-200 dark:bg-gray-800 rounded-xl animate-pulse" />
+            <div key={i} className="h-32 bg-white rounded-2xl border border-[#E5E7EB] animate-pulse" />
           ))}
         </div>
       ) : triggers.length === 0 ? (
-        <EmptyState
-          icon={<Zap className="w-8 h-8 text-purple-500" />}
-          title="No triggers yet"
-          description="Create your first trigger to auto-reply to comments, DMs, and more."
-          action={
-            <button
-              onClick={() => setSlideOverOpen(true)}
-              className="px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 transition-colors"
-            >
-              Create Your First Trigger
-            </button>
-          }
-        />
+        <div className="bg-white rounded-2xl border border-[#E5E7EB] p-12 flex flex-col items-center text-center">
+          <div className="w-16 h-16 rounded-2xl bg-[#EEF2FF] flex items-center justify-center mb-4">
+            <Zap className="w-8 h-8 text-[#3D7EFF]" />
+          </div>
+          <h3 className="text-[18px] font-bold text-[#0F1B4C] mb-2">No automations yet</h3>
+          <p className="text-[14px] text-[#6B7280] mb-6 max-w-md">
+            Create your first automation to auto-reply to comments, DMs, and grow your audience.
+          </p>
+          <button
+            onClick={() => setModalOpen(true)}
+            className="flex items-center gap-1.5 px-5 py-2.5 bg-[#3D7EFF] text-white rounded-full text-sm font-semibold hover:opacity-90 transition-opacity"
+          >
+            <Plus className="w-4 h-4" /> Create Your First Automation
+          </button>
+        </div>
       ) : (
         <div className="space-y-3">
           {triggers.map((trigger) => (
@@ -190,26 +147,10 @@ export default function TriggersPage() {
         </div>
       )}
 
-      {/* Slide-over */}
-      <TriggerSlideOver
-        isOpen={slideOverOpen}
-        onClose={() => {
-          setSlideOverOpen(false);
-          setEditingTrigger(null);
-        }}
-        onSave={handleSave}
-        initialData={
-          editingTrigger
-            ? {
-                type: editingTrigger.type,
-                keywords: editingTrigger.keywords,
-                replyMessage: editingTrigger.replyMessage,
-                deliverLink: editingTrigger.deliverLink || "",
-                followGate: editingTrigger.followGate,
-              }
-            : undefined
-        }
-        igAccountId={igAccountId}
+      {/* New Automation Modal */}
+      <NewAutomationModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
       />
 
       {/* Delete confirmation */}
@@ -217,8 +158,8 @@ export default function TriggersPage() {
         isOpen={!!deleteId}
         onClose={() => setDeleteId(null)}
         onConfirm={handleDelete}
-        title="Delete Trigger"
-        description="Are you sure? This will stop all auto-replies from this trigger. Existing leads will be preserved."
+        title="Delete Automation"
+        description="Are you sure? This will stop all auto-replies from this automation. Existing leads will be preserved."
         confirmText="Delete"
         variant="danger"
         loading={deleting}

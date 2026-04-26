@@ -18,7 +18,6 @@ const mainNav = [
 ];
 
 const settingsNav = [
-  { href: "/dashboard/triggers", label: "Automation Rules", icon: Zap },
   { href: "/dashboard/settings", label: "Instagram Account", icon: Link2 },
   { href: "/dashboard/upgrade", label: "Billing", icon: CreditCard },
 ];
