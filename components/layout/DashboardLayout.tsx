@@ -20,17 +20,12 @@ export function DashboardLayout({ children, igAccount: propIgAccount }: Dashboar
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [igAccount, setIgAccount] = useState(propIgAccount || null);
 
-  // If no igAccount was passed as prop, fetch it
   useEffect(() => {
-    if (!propIgAccount) {
-      fetchIgAccount();
-    }
+    if (!propIgAccount) fetchIgAccount();
   }, [propIgAccount]);
 
   useEffect(() => {
-    if (propIgAccount) {
-      setIgAccount(propIgAccount);
-    }
+    if (propIgAccount) setIgAccount(propIgAccount);
   }, [propIgAccount]);
 
   const fetchIgAccount = async () => {
@@ -46,35 +41,21 @@ export function DashboardLayout({ children, igAccount: propIgAccount }: Dashboar
           });
         }
       }
-    } catch {
-      // Fallback failed silently
-    }
+    } catch {}
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Desktop sidebar */}
+    <div className="min-h-screen bg-[#F0F4FF]">
       <Sidebar
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
         igAccount={igAccount}
       />
-
-      {/* Mobile nav */}
       <MobileNav isOpen={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
 
-      {/* Main content area */}
-      <div
-        className={cn(
-          "transition-all duration-300",
-          sidebarCollapsed ? "lg:ml-[72px]" : "lg:ml-[260px]"
-        )}
-      >
-        <TopBar
-          onMenuClick={() => setMobileNavOpen(true)}
-          igAccount={igAccount}
-        />
-        <main className="p-4 lg:p-6 max-w-7xl mx-auto">{children}</main>
+      <div className={cn("transition-all duration-300", sidebarCollapsed ? "lg:ml-16" : "lg:ml-[240px]")}>
+        <TopBar onMenuClick={() => setMobileNavOpen(true)} igAccount={igAccount} />
+        <main className="p-6 max-w-[1400px] mx-auto">{children}</main>
       </div>
     </div>
   );

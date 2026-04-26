@@ -2,6 +2,7 @@
 
 import prisma from "@/lib/prisma";
 import { sendDM, replyToComment, checkIfFollows } from "@/lib/instagram";
+import { sendLeadAlertEmail } from "@/lib/resend";
 import type { TriggerType } from "@prisma/client";
 
 interface IncomingEvent {
@@ -163,6 +164,14 @@ export async function processTriggerEvent(
         igUsername: event.senderUsername,
       },
     });
+
+    // Send lead alert email if user has an email on file
+    if (igAccount.user.email) {
+      const keyword = matchedTrigger.keywords[0] || event.type;
+      sendLeadAlertEmail(igAccount.user.email, event.senderUsername, keyword).catch(
+        (err) => console.error("Lead alert email failed:", err)
+      );
+    }
 
     // 8. Update trigger hit count
     await prisma.trigger.update({
