@@ -769,19 +769,21 @@ function Toggle({ on, onToggle, green }: { on: boolean; onToggle: () => void; gr
         flexShrink: 0,
         transition: "background-color 0.2s",
         padding: 0,
+        overflow: "hidden",
       }}
     >
       <span
         style={{
           position: "absolute",
           top: "3px",
-          left: on ? "19px" : "3px",
+          left: "3px",
           width: "14px",
           height: "14px",
           borderRadius: "50%",
           backgroundColor: "white",
           boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
-          transition: "left 0.2s ease",
+          transform: on ? "translateX(16px)" : "translateX(0px)",
+          transition: "transform 0.2s ease",
         }}
       />
     </button>

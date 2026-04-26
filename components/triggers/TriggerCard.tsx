@@ -84,19 +84,21 @@ export function TriggerCard({ trigger, onToggle, onEdit, onDelete }: TriggerCard
               flexShrink: 0,
               transition: "background-color 0.2s",
               padding: 0,
+              overflow: "hidden",
             }}
           >
             <span
               style={{
                 position: "absolute",
                 top: "2px",
-                left: trigger.isActive ? "22px" : "2px",
+                left: "2px",
                 width: "20px",
                 height: "20px",
                 borderRadius: "50%",
                 backgroundColor: "white",
                 boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
-                transition: "left 0.2s ease",
+                transform: trigger.isActive ? "translateX(20px)" : "translateX(0px)",
+                transition: "transform 0.2s ease",
               }}
             />
           </button>
