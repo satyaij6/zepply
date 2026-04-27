@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
+
 import { PageHeader } from "@/components/shared/PageHeader";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { BarChart3 } from "lucide-react";
@@ -59,7 +59,7 @@ export default function AnalyticsPage() {
   })) || [];
 
   return (
-    <DashboardLayout>
+    <>
       <PageHeader title="Analytics" description="Track your automation performance." />
 
       {/* Range selector */}
@@ -212,6 +212,6 @@ export default function AnalyticsPage() {
           )}
         </>
       )}
-    </DashboardLayout>
+    </>
   );
 }

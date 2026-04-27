@@ -61,16 +61,13 @@ interface Props {
 export function NewAutomationModal({ isOpen, onClose }: Props) {
   const router = useRouter();
   const [query, setQuery] = useState("");
-  const [animate, setAnimate] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isOpen) {
-      requestAnimationFrame(() => setAnimate(true));
-      const t = setTimeout(() => searchRef.current?.focus(), 280);
+      const t = setTimeout(() => searchRef.current?.focus(), 50);
       return () => clearTimeout(t);
     } else {
-      setAnimate(false);
       setQuery("");
     }
   }, [isOpen]);
@@ -103,17 +100,15 @@ export function NewAutomationModal({ isOpen, onClose }: Props) {
 
   return (
     <div
-      className={`fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 transition-opacity duration-[260ms] ${
-        isOpen && animate ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+      className={`fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 ${
+        isOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
       }`}
       style={{ background: "rgba(15,27,76,0.52)" }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div
-        className={`bg-white w-full sm:rounded-3xl sm:w-[780px] sm:max-w-[94vw] max-h-[92vh] sm:max-h-[88vh] overflow-y-auto p-6 sm:p-9 shadow-2xl relative transition-all duration-[260ms] rounded-t-3xl ${
-          isOpen && animate ? "opacity-100 translate-y-0" : "opacity-0 translate-y-5"
-        }`}
-        style={{ scrollbarWidth: "thin", scrollbarColor: "#3D7EFF #EEF2FF" }}
+        className="bg-white w-full sm:rounded-3xl sm:w-[780px] sm:max-w-[94vw] max-h-[92vh] sm:max-h-[88vh] overflow-y-auto p-6 sm:p-9 shadow-2xl relative rounded-t-3xl [&::-webkit-scrollbar]:hidden"
+        style={{ scrollbarWidth: "none" }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -134,47 +129,15 @@ export function NewAutomationModal({ isOpen, onClose }: Props) {
 
         <div className="h-px bg-[#F3F4F6] my-5" />
 
-        {/* Search */}
-        <div className="relative mb-7">
-          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <circle cx="7" cy="7" r="5" stroke="#9CA3AF" strokeWidth="1.5" />
-              <path d="M11 11l3 3" stroke="#9CA3AF" strokeWidth="1.5" strokeLinecap="round" />
-            </svg>
-          </span>
-          <input
-            ref={searchRef}
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search automation types..."
-            autoComplete="off"
-            className="w-full bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl py-3.5 pl-11 pr-10 text-[14px] text-[#0F1B4C] placeholder:text-[#9CA3AF] outline-none focus:border-[#3D7EFF] focus:ring-2 focus:ring-[#3D7EFF]/10 transition-all"
-          />
-          {query && (
-            <button
-              onClick={() => { setQuery(""); searchRef.current?.focus(); }}
-              className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-[#E5E7EB] flex items-center justify-center text-[#6B7280] hover:bg-[#D1D5DB] transition-colors"
-            >
-              <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                <path d="M1.5 1.5l7 7M8.5 1.5l-7 7" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-              </svg>
-            </button>
-          )}
-        </div>
-
         {/* Section 1 — Trigger Cards */}
         {visibleCards.length > 0 && (
           <div>
-            <p className="text-[11px] font-bold tracking-[1.5px] uppercase text-[#9CA3AF] mb-3.5">
-              Automation Triggers
-            </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
               {visibleCards.map((card) => (
                 <button
                   key={card.id}
                   onClick={() => handleCardClick(card.id)}
-                  className="group relative text-left rounded-2xl p-[22px] cursor-pointer transition-all duration-[180ms] outline-none focus-visible:ring-2 focus-visible:ring-[#3D7EFF] border-[1.5px] border-[#E5E7EB] bg-white hover:border-[#3D7EFF] hover:bg-[#F8FAFF] hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(61,126,255,0.1)]"
+                  className="group relative text-left rounded-2xl p-[22px] cursor-pointer transition-all duration-[180ms] outline-none focus-visible:ring-2 focus-visible:ring-[#3D7EFF] border-[1.5px] border-[#E5E7EB] bg-white hover:border-[#3D7EFF] hover:bg-[#F8FAFF] hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(61,126,255,0.1)] flex flex-col"
                 >
                   {/* Top row */}
                   <div className="flex items-start justify-between">
@@ -192,13 +155,13 @@ export function NewAutomationModal({ isOpen, onClose }: Props) {
                   </div>
 
                   {/* Content */}
-                  <div className="mt-3.5">
+                  <div className="mt-3.5 flex-1">
                     <p className="text-[16px] font-bold text-[#0F1B4C] tracking-[-0.2px]">{card.name}</p>
                     <p className="text-[13px] text-[#6B7280] leading-[1.65] mt-1.5">{card.desc}</p>
                   </div>
 
                   {/* Bottom row */}
-                  <div className="flex items-center justify-between mt-4">
+                  <div className="flex items-center justify-between mt-4 pt-0">
                     <span className="bg-[#F3F4F6] text-[#6B7280] text-[11px] font-semibold px-2.5 py-1 rounded-md">
                       {card.tag}
                     </span>
@@ -284,20 +247,6 @@ export function NewAutomationModal({ isOpen, onClose }: Props) {
           </div>
         )}
 
-        {/* Footer */}
-        <div className="h-px bg-[#F3F4F6] mt-6" />
-        <div className="pt-5 flex items-center justify-between gap-4">
-          <p className="text-[13px] text-[#9CA3AF]">
-            Not sure which to pick?{" "}
-            <button className="text-[#3D7EFF] hover:underline">See examples →</button>
-          </p>
-          <button
-            onClick={onClose}
-            className="px-6 py-2.5 bg-white text-[#374151] border border-[#E5E7EB] rounded-full text-sm font-medium hover:bg-[#F9FAFB] transition-colors"
-          >
-            Cancel
-          </button>
-        </div>
       </div>
     </div>
   );

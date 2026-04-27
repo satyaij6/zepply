@@ -1,19 +1,32 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: "Glitz";
+  src: url("/fonts/Glitz.woff2") format("woff2"),
+       url("/fonts/Glitz.woff") format("woff");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 @theme {
-  --color-accent: #3D7EFF;
+  --color-accent: #2564FF;
   --color-accent-light: #EEF2FF;
   --color-navy: #0F1B4C;
-  --color-zep-bg: #F0F4FF;
+  --color-zep-bg: #F2F2F2;
   --color-zep-green: #22C55E;
   --color-zep-red: #EF4444;
   --color-zep-muted: #9CA3AF;
   --color-zep-gray: #6B7280;
-  --color-zep-border: #E5E7EB;
+  --color-zep-border: #D9D9D9;
+}
+
+html {
+  scrollbar-gutter: stable;
 }
 
 body {
-  font-family: 'Inter', sans-serif;
+  font-family: 'Roboto', sans-serif;
 }
 
 ::-webkit-scrollbar { width: 6px; }

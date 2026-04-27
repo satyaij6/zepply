@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
+
 import { ConfirmModal } from "@/components/shared/ConfirmModal";
 import { TriggerCard } from "@/components/triggers/TriggerCard";
 import { NewAutomationModal } from "@/components/dashboard/NewAutomationModal";
@@ -84,7 +84,7 @@ export default function TriggersPage() {
   };
 
   return (
-    <DashboardLayout>
+    <>
       {/* Page header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
@@ -95,9 +95,9 @@ export default function TriggersPage() {
         </div>
         <button
           onClick={() => setModalOpen(true)}
-          className="flex items-center gap-1.5 px-4 py-2.5 bg-[#3D7EFF] text-white rounded-full text-sm font-semibold hover:opacity-90 transition-opacity self-start sm:self-auto"
+          className="flex items-center gap-1.5 px-4 py-2 bg-[#2564FF] text-white rounded-full text-[13px] font-medium hover:opacity-90 transition-all duration-150 active:scale-90 self-start sm:self-auto"
         >
-          <Plus className="w-4 h-4" /> New Automation
+          <Plus className="w-3.5 h-3.5" /> New Automation
         </button>
       </div>
 
@@ -172,6 +172,6 @@ export default function TriggersPage() {
         variant="danger"
         loading={deleting}
       />
-    </DashboardLayout>
+    </>
   );
 }

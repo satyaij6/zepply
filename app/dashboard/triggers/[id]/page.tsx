@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
+
 import { PageHeader } from "@/components/shared/PageHeader";
 import { ConfirmModal } from "@/components/shared/ConfirmModal";
 import { TriggerTypeBadge } from "@/components/triggers/TriggerTypeSelector";
@@ -61,30 +61,26 @@ export default function TriggerDetailPage() {
 
   if (loading) {
     return (
-      <DashboardLayout>
-        <div className="animate-pulse space-y-6">
-          <div className="h-8 w-48 bg-gray-200 dark:bg-gray-800 rounded" />
-          <div className="h-64 bg-gray-200 dark:bg-gray-800 rounded-xl" />
-        </div>
-      </DashboardLayout>
+      <div className="animate-pulse space-y-6">
+        <div className="h-8 w-48 bg-gray-200 dark:bg-gray-800 rounded" />
+        <div className="h-64 bg-gray-200 dark:bg-gray-800 rounded-xl" />
+      </div>
     );
   }
 
   if (!trigger) {
     return (
-      <DashboardLayout>
-        <div className="text-center py-20">
-          <p className="text-gray-500">Trigger not found.</p>
-          <Link href="/dashboard/triggers" className="text-purple-600 text-sm mt-2 inline-block">
-            ← Back to triggers
-          </Link>
-        </div>
-      </DashboardLayout>
+      <div className="text-center py-20">
+        <p className="text-gray-500">Trigger not found.</p>
+        <Link href="/dashboard/triggers" className="text-purple-600 text-sm mt-2 inline-block">
+          ← Back to triggers
+        </Link>
+      </div>
     );
   }
 
   return (
-    <DashboardLayout>
+    <>
       <div className="mb-6">
         <Link
           href="/dashboard/triggers"
@@ -253,6 +249,6 @@ export default function TriggerDetailPage() {
         variant="danger"
         loading={deleting}
       />
-    </DashboardLayout>
+    </>
   );
 }

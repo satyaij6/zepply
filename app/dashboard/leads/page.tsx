@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
+
 import { PageHeader } from "@/components/shared/PageHeader";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { TriggerTypeBadge } from "@/components/triggers/TriggerTypeSelector";
@@ -42,7 +42,7 @@ export default function LeadsPage() {
   };
 
   return (
-    <DashboardLayout>
+    <>
       <PageHeader
         title="Leads"
         description={`${total} leads captured so far.`}
@@ -177,6 +177,6 @@ export default function LeadsPage() {
           </div>
         </>
       )}
-    </DashboardLayout>
+    </>
   );
 }

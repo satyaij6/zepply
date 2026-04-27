@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, Suspense } from "react";
+import { useState, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 type TriggerType = "COMMENT" | "STORY_REPLY" | "DM_KEYWORD";
@@ -45,9 +45,13 @@ function FlowBuilderInner() {
   const [dmText, setDmText] = useState("Hey {first_name}! 👋 Here's the link you asked for →");
   const [linkLabel, setLinkLabel] = useState("");
   const [linkUrl, setLinkUrl] = useState("");
+  const [linkUrlError, setLinkUrlError] = useState("");
   const [linkOpen, setLinkOpen] = useState(false);
   const [leadOn, setLeadOn] = useState(false);
   const [leadText, setLeadText] = useState("Drop your email below and I'll send it straight to you! 📩");
+  const [openingDmOn, setOpeningDmOn] = useState(false);
+  const [openingDmText, setOpeningDmText] = useState("");
+  const [openingDmBtnLabel, setOpeningDmBtnLabel] = useState("");
 
   // Step 4
   const [autoName, setAutoName] = useState(() => {
@@ -107,6 +111,9 @@ function FlowBuilderInner() {
   const step1Valid = isComment ? (postType !== "specific" || selectedPost !== null) : true;
   const step2Valid = anyKeyword || keywords.length > 0;
   const step3Valid = dmText.trim().length > 0;
+  const dmStep = isComment ? 3 : 2;
+  const userHasReachedDmStep = currentStep >= dmStep || completedSteps.has(dmStep);
+  const showDmBubble = userHasReachedDmStep && dmText.trim().length > 0;
 
   const canActivate = completedSteps.size >= totalSteps - 1;
 
@@ -144,14 +151,9 @@ function FlowBuilderInner() {
   const charLen = dmText.length;
   const charColor = charLen >= 950 ? "text-[#EF4444]" : charLen >= 800 ? "text-[#F59E0B]" : "text-[#22C55E]";
 
-  const typeLabel: Record<TriggerType, string> = {
-    COMMENT: "Comment-to-DM",
-    STORY_REPLY: "Story Reply",
-    DM_KEYWORD: "Keyword DM",
-  };
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-[#F0F4FF]" style={{ fontFamily: "'Inter', sans-serif" }}>
+    <div className="fixed inset-0 z-50 flex flex-col overflow-hidden bg-[#F2F2F2]" style={{ fontFamily: "'Inter', sans-serif" }}>
 
       {/* ── TOP BAR ── */}
       <div className="bg-white border-b border-[#E5E7EB] flex-shrink-0 z-40">
@@ -163,11 +165,11 @@ function FlowBuilderInner() {
               onClick={() => setShowBack(true)}
               className="w-8 h-8 rounded-full bg-[#F3F4F6] flex items-center justify-center text-[#6B7280] hover:bg-[#E5E7EB] transition-colors flex-shrink-0"
             >
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 2L4 7l5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 2L4 7l5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
             </button>
             <div className="flex items-center gap-1.5 text-[13px] text-[#9CA3AF]">
               <button onClick={() => setShowBack(true)} className="hover:text-[#3D7EFF] transition-colors">Automations</button>
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M4.5 2.5L7.5 6l-3 3.5" stroke="#9CA3AF" strokeWidth="1.4" strokeLinecap="round"/></svg>
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M4.5 2.5L7.5 6l-3 3.5" stroke="#9CA3AF" strokeWidth="1.4" strokeLinecap="round" /></svg>
               <span className="text-[#374151] font-medium">Flow Builder</span>
             </div>
           </div>
@@ -181,13 +183,12 @@ function FlowBuilderInner() {
               return (
                 <div key={n} className="flex items-center">
                   <div className="flex flex-col items-center">
-                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[12px] font-bold transition-all relative z-10 ${
-                      isDone ? "bg-[#3D7EFF] text-white" :
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[12px] font-bold transition-all relative z-10 ${isDone ? "bg-[#3D7EFF] text-white" :
                       isCurrent ? "bg-[#3D7EFF] text-white shadow-[0_0_0_3px_white,0_0_0_6px_rgba(61,126,255,0.35)]" :
-                      "bg-[#E5E7EB] text-[#9CA3AF]"
-                    }`}>
+                        "bg-[#E5E7EB] text-[#9CA3AF]"
+                      }`}>
                       {isDone ? (
-                        <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M1.5 5.5l3 3 5-6" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                        <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M1.5 5.5l3 3 5-6" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
                       ) : n}
                     </div>
                     <span className={`text-[10px] font-semibold mt-1 whitespace-nowrap ${isDone || isCurrent ? "text-[#3D7EFF]" : "text-[#9CA3AF]"}`}>
@@ -217,9 +218,8 @@ function FlowBuilderInner() {
             <button
               onClick={() => canActivate && goToStep(totalSteps)}
               disabled={!canActivate}
-              className={`px-4 py-1.5 rounded-full text-[13px] font-semibold transition-colors ${
-                canActivate ? "bg-[#22C55E] text-white hover:bg-[#16A34A] cursor-pointer" : "bg-[#E5E7EB] text-[#9CA3AF] cursor-not-allowed"
-              }`}
+              className={`px-4 py-1.5 rounded-full text-[13px] font-semibold transition-colors ${canActivate ? "bg-[#22C55E] text-white hover:bg-[#16A34A] cursor-pointer" : "bg-[#E5E7EB] text-[#9CA3AF] cursor-not-allowed"
+                }`}
             >
               ⚡ Activate
             </button>
@@ -240,55 +240,37 @@ function FlowBuilderInner() {
 
       {/* Name bar */}
       <div className="bg-white border-b border-[#F3F4F6] px-7 py-2.5 flex items-center justify-between flex-shrink-0">
-        <input
-          value={autoName}
-          onChange={(e) => setAutoName(e.target.value)}
-          className="text-[15px] font-semibold text-[#0F1B4C] bg-transparent border-none outline-none border-b-2 border-transparent focus:border-[#3D7EFF] transition-colors"
-        />
+        <div className="flex items-center gap-2 group">
+          <input
+            id="auto-name-input"
+            value={autoName}
+            onChange={(e) => setAutoName(e.target.value)}
+            onFocus={(e) => e.target.select()}
+            onBlur={() => {
+              if (!autoName.trim()) {
+                const defaults: Record<TriggerType, string> = {
+                  COMMENT: "Comment-to-DM: 'link'",
+                  STORY_REPLY: "Story Reply Flow",
+                  DM_KEYWORD: "Keyword DM Trigger",
+                };
+                setAutoName(defaults[triggerType] || "New Automation");
+              }
+            }}
+            className="text-[15px] font-semibold text-[#0F1B4C] bg-transparent border-none outline-none border-b-2 border-transparent focus:border-[#3D7EFF] transition-colors"
+          />
+          <svg
+            width="14" height="14" viewBox="0 0 14 14" fill="none"
+            className="text-[#9CA3AF] group-hover:text-[#3D7EFF] transition-colors flex-shrink-0 cursor-text"
+            onClick={() => document.getElementById("auto-name-input")?.focus()}
+          >
+            <path d="M9.5 1.5a1.414 1.414 0 0 1 2 2L4 11l-3 1 1-3 7.5-7.5Z" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </div>
         <span className="text-[12px] text-[#9CA3AF]">Last saved: just now</span>
       </div>
 
       {/* ── BODY ── */}
       <div className="flex flex-1 overflow-hidden">
-
-        {/* Mini sidebar */}
-        <aside className="w-[220px] bg-white border-r border-[#E5E7EB] flex flex-col flex-shrink-0 hidden lg:flex">
-          <div className="p-4 flex items-center gap-2">
-            <div className="w-7 h-7 bg-[#3D7EFF] rounded-lg flex items-center justify-center">
-              <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 6.5L5.5 10 11 3" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            </div>
-            <span className="text-[19px] font-extrabold text-[#0F1B4C]">zep<span className="text-[#3D7EFF]">ply</span></span>
-          </div>
-          <div className="mx-2.5 mb-3 bg-[#F0FDF4] rounded-[9px] px-2.5 py-1.5 flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#22C55E] flex-shrink-0" />
-            <div>
-              <p className="text-[12px] font-medium text-[#0F1B4C]">{typeLabel[triggerType]}</p>
-              <span className="text-[11px] text-[#22C55E]">Building...</span>
-            </div>
-          </div>
-          {[
-            { label: "Dashboard", icon: <rect x="1" y="1" width="5" height="5" rx="1.5" fill="currentColor" opacity=".8"/> },
-          ].map((_, i) => null)}
-          {[
-            { label: "Dashboard", href: "/dashboard" },
-            { label: "Automations", href: "/dashboard/triggers", active: true },
-            { label: "Conversations", href: "/dashboard" },
-            { label: "Leads & CRM", href: "/dashboard/leads" },
-            { label: "Analytics", href: "/dashboard/analytics" },
-          ].map((item) => (
-            <button
-              key={item.label}
-              onClick={() => item.active ? undefined : router.push(item.href)}
-              className={`flex items-center gap-2 mx-2 mb-0.5 px-3 py-2 rounded-[9px] text-[13px] font-medium transition-colors border-l-[3px] ${
-                item.active
-                  ? "bg-[#EEF2FF] text-[#3D7EFF] border-[#3D7EFF]"
-                  : "text-[#6B7280] border-transparent hover:bg-[#F9FAFB]"
-              }`}
-            >
-              {item.label}
-            </button>
-          ))}
-        </aside>
 
         {/* Steps panel */}
         <div
@@ -313,13 +295,11 @@ function FlowBuilderInner() {
                   <div
                     key={pt}
                     onClick={() => setPostType(pt)}
-                    className={`flex items-center gap-2.5 p-3 rounded-xl border-[1.5px] cursor-pointer transition-all ${
-                      postType === pt ? "border-[#3D7EFF] bg-[#F8FAFF]" : "border-[#E5E7EB] hover:border-[#3D7EFF]"
-                    }`}
+                    className={`flex items-center gap-2.5 p-3 rounded-xl border-[1.5px] cursor-pointer transition-all ${postType === pt ? "border-[#3D7EFF] bg-[#F8FAFF]" : "border-[#E5E7EB] hover:border-[#3D7EFF]"
+                      }`}
                   >
-                    <span className={`w-3.5 h-3.5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all ${
-                      postType === pt ? "border-[#3D7EFF] bg-[#3D7EFF]" : "border-[#E5E7EB]"
-                    }`}>
+                    <span className={`w-3.5 h-3.5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all ${postType === pt ? "border-[#3D7EFF] bg-[#3D7EFF]" : "border-[#E5E7EB]"
+                      }`}>
                       {postType === pt && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
                     </span>
                     <div>
@@ -335,7 +315,7 @@ function FlowBuilderInner() {
                 <div className="mt-3">
                   <div className="relative">
                     <span className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-[#9CA3AF]">
-                      <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="6" cy="6" r="4" stroke="currentColor" strokeWidth="1.3"/><path d="M9.5 9.5l2 2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
+                      <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="6" cy="6" r="4" stroke="currentColor" strokeWidth="1.3" /><path d="M9.5 9.5l2 2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>
                     </span>
                     <input
                       value={postSearch}
@@ -360,9 +340,8 @@ function FlowBuilderInner() {
                       <div
                         key={p.id}
                         onClick={() => setSelectedPost(p.id)}
-                        className={`border-[1.5px] rounded-[10px] overflow-hidden cursor-pointer transition-all ${
-                          selectedPost === p.id ? "border-[#3D7EFF] bg-[#EEF2FF]" : "border-[#E5E7EB] hover:border-[#3D7EFF]"
-                        }`}
+                        className={`border-[1.5px] rounded-[10px] overflow-hidden cursor-pointer transition-all ${selectedPost === p.id ? "border-[#3D7EFF] bg-[#EEF2FF]" : "border-[#E5E7EB] hover:border-[#3D7EFF]"
+                          }`}
                       >
                         <div className="relative aspect-square" style={{ background: p.grad }}>
                           {selectedPost === p.id && (
@@ -371,7 +350,7 @@ function FlowBuilderInner() {
                           <span className="absolute top-1.5 right-1.5 bg-white/90 text-[9px] font-semibold text-[#374151] px-1.5 py-0.5 rounded-md">{p.type}</span>
                           {selectedPost === p.id && (
                             <span className="absolute top-1.5 left-1.5 w-4.5 h-4.5 bg-[#3D7EFF] rounded-full flex items-center justify-center">
-                              <svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M1 4l2 2 4-4" stroke="white" strokeWidth="1.4" strokeLinecap="round"/></svg>
+                              <svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M1 4l2 2 4-4" stroke="white" strokeWidth="1.4" strokeLinecap="round" /></svg>
                             </span>
                           )}
                         </div>
@@ -486,6 +465,40 @@ function FlowBuilderInner() {
             onEdit={() => goToStep(isComment ? 3 : 2)}
           >
             <div className="pt-3.5">
+
+              {/* Opening DM toggle */}
+              <div className="bg-white border border-[#E5E7EB] rounded-xl p-3.5 mb-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 10V3a1 1 0 011-1h8a1 1 0 011 1v5a1 1 0 01-1 1H5L2 10z" stroke="#3D7EFF" strokeWidth="1.4" strokeLinejoin="round"/></svg>
+                    <p className="text-[13px] font-bold text-[#0F1B4C]">Opening DM</p>
+                    <span className="text-[10px] font-bold bg-[#EEF2FF] text-[#3D7EFF] border border-[#BFDBFE] px-2 py-0.5 rounded-full">Optional</span>
+                  </div>
+                  <Toggle on={openingDmOn} onToggle={() => setOpeningDmOn(!openingDmOn)} />
+                </div>
+                <p className="text-[12px] text-[#6B7280] mt-1.5 leading-[1.4]">Send an initial message before the main DM — great for a warm intro or teaser.</p>
+                {openingDmOn && (
+                  <div className="mt-3 space-y-2">
+                    <textarea
+                      value={openingDmText}
+                      onChange={(e) => setOpeningDmText(e.target.value)}
+                      placeholder="e.g. Hey! I saw your comment 👀 Sending you something special..."
+                      className="w-full min-h-[72px] bg-[#F9FAFB] border border-[#E5E7EB] rounded-[10px] px-3 py-2.5 text-[13px] leading-[1.6] text-[#0F1B4C] resize-none outline-none focus:border-[#3D7EFF] transition-colors"
+                    />
+                    <div>
+                      <p className="text-[12px] font-semibold text-[#374151] mb-1">Button label <span className="text-[#9CA3AF] font-normal">(click to send main DM)</span></p>
+                      <input
+                        value={openingDmBtnLabel}
+                        onChange={(e) => setOpeningDmBtnLabel(e.target.value)}
+                        placeholder="e.g. Get Access, Send me the link"
+                        className="w-full bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg px-3 py-2 text-[13px] text-[#0F1B4C] outline-none focus:border-[#3D7EFF] transition-colors"
+                      />
+                      <p className="text-[11px] text-[#9CA3AF] mt-1">When the follower taps this, the main DM is sent automatically.</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <div className="flex justify-between items-center mb-1">
                 <p className="text-[12px] font-semibold text-[#374151]">Message</p>
               </div>
@@ -505,13 +518,40 @@ function FlowBuilderInner() {
               </div>
 
               {/* Add Link */}
-              <button
-                onClick={() => setLinkOpen(!linkOpen)}
-                className="flex items-center gap-1.5 mt-2.5 px-3 py-2 border border-[#E5E7EB] rounded-lg bg-white text-[13px] text-[#374151] hover:bg-[#F9FAFB] transition-colors"
-              >
-                <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M5 8l3-3M7.5 3.5l1.5-1.5a2.5 2.5 0 013.5 3.5l-1.5 1.5M5.5 9.5L4 11A2.5 2.5 0 01.5 7.5L2 6" stroke="#374151" strokeWidth="1.4" strokeLinecap="round"/></svg>
-                + Add Link
-              </button>
+              {linkLabel && !linkOpen ? (
+                /* ── Link added — show preview chip ── */
+                <div className="mt-2.5 flex items-center gap-2 bg-[#EEF2FF] border border-[#BFDBFE] rounded-[10px] px-3 py-2.5">
+                  <div className="w-7 h-7 rounded-lg bg-[#3D7EFF] flex items-center justify-center flex-shrink-0">
+                    <svg width="12" height="12" viewBox="0 0 13 13" fill="none"><path d="M5 8l3-3M7.5 3.5l1.5-1.5a2.5 2.5 0 013.5 3.5l-1.5 1.5M5.5 9.5L4 11A2.5 2.5 0 01.5 7.5L2 6" stroke="white" strokeWidth="1.5" strokeLinecap="round" /></svg>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[12px] font-bold text-[#0F1B4C] truncate">{linkLabel}</p>
+                    {linkUrl && <p className="text-[10px] text-[#6B7280] truncate">{linkUrl}</p>}
+                  </div>
+                  <button
+                    onClick={() => setLinkOpen(!linkOpen)}
+                    title="Edit"
+                    className="w-6 h-6 rounded-md flex items-center justify-center text-[#3D7EFF] hover:bg-[#DBEAFE] transition-colors flex-shrink-0"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M8 1.5a1.2 1.2 0 011.7 1.7L3.5 9.4l-2 .6.6-2L8 1.5z" stroke="#3D7EFF" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  </button>
+                  <button
+                    onClick={() => { setLinkLabel(""); setLinkUrl(""); setLinkOpen(false); setLinkUrlError(""); }}
+                    title="Remove"
+                    className="w-6 h-6 rounded-md flex items-center justify-center text-[#EF4444] hover:bg-[#FEE2E2] transition-colors flex-shrink-0"
+                  >
+                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 2l6 6M8 2L2 8" stroke="#EF4444" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setLinkOpen(!linkOpen)}
+                  className="flex items-center gap-1.5 mt-2.5 px-3 py-2 border border-[#E5E7EB] rounded-lg bg-white text-[13px] text-[#374151] hover:bg-[#F9FAFB] transition-colors"
+                >
+                  <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M5 8l3-3M7.5 3.5l1.5-1.5a2.5 2.5 0 013.5 3.5l-1.5 1.5M5.5 9.5L4 11A2.5 2.5 0 01.5 7.5L2 6" stroke="#374151" strokeWidth="1.4" strokeLinecap="round" /></svg>
+                  + Add Link
+                </button>
+              )}
               {linkOpen && (
                 <div className="mt-2 bg-[#F9FAFB] border border-[#E5E7EB] rounded-[10px] p-3 space-y-2">
                   <div>
@@ -520,8 +560,59 @@ function FlowBuilderInner() {
                   </div>
                   <div>
                     <p className="text-[12px] font-semibold text-[#374151] mb-1">Destination URL</p>
-                    <input value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)} placeholder="https://..." className="w-full bg-white border border-[#E5E7EB] rounded-lg px-3 py-2 text-[13px] text-[#0F1B4C] outline-none focus:border-[#3D7EFF]" />
+                    <input
+                      value={linkUrl}
+                      onChange={(e) => {
+                        setLinkUrl(e.target.value);
+                        if (linkUrlError) setLinkUrlError("");
+                      }}
+                      onBlur={() => {
+                        if (!linkUrl.trim()) { setLinkUrlError(""); return; }
+                        try {
+                          const u = new URL(linkUrl.trim());
+                          if (u.protocol !== "http:" && u.protocol !== "https:") {
+                            setLinkUrlError("URL must start with http:// or https://");
+                          } else {
+                            setLinkUrlError("");
+                          }
+                        } catch {
+                          setLinkUrlError("Please enter a valid URL (e.g. https://example.com)");
+                        }
+                      }}
+                      placeholder="https://..."
+                      className={`w-full bg-white border rounded-lg px-3 py-2 text-[13px] text-[#0F1B4C] outline-none transition-colors ${linkUrlError ? "border-[#EF4444] focus:border-[#EF4444]" : "border-[#E5E7EB] focus:border-[#3D7EFF]"}`}
+                    />
+                    {linkUrlError && (
+                      <p className="text-[11px] text-[#EF4444] mt-1 flex items-center gap-1">
+                        <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><circle cx="5.5" cy="5.5" r="5" stroke="#EF4444" strokeWidth="1" /><path d="M5.5 3v3" stroke="#EF4444" strokeWidth="1.2" strokeLinecap="round" /><circle cx="5.5" cy="8" r="0.6" fill="#EF4444" /></svg>
+                        {linkUrlError}
+                      </p>
+                    )}
                   </div>
+                  {linkLabel && (
+                    <button
+                      onClick={() => {
+                        // Validate URL before saving
+                        if (linkUrl.trim()) {
+                          try {
+                            const u = new URL(linkUrl.trim());
+                            if (u.protocol !== "http:" && u.protocol !== "https:") {
+                              setLinkUrlError("URL must start with http:// or https://");
+                              return;
+                            }
+                            setLinkUrlError("");
+                          } catch {
+                            setLinkUrlError("Please enter a valid URL (e.g. https://example.com)");
+                            return;
+                          }
+                        }
+                        setLinkOpen(false);
+                      }}
+                      className="w-full py-1.5 bg-[#3D7EFF] text-white text-[12px] font-bold rounded-lg hover:opacity-90 transition-opacity"
+                    >
+                      ✓ Done
+                    </button>
+                  )}
                 </div>
               )}
 
@@ -591,7 +682,7 @@ function FlowBuilderInner() {
               {/* Expected performance */}
               <div className="rounded-xl p-3.5" style={{ background: "linear-gradient(135deg,#F0F7FF,#EEF2FF)", border: "1px solid #E5E7EB" }}>
                 <div className="flex items-center gap-1.5 text-[12px] font-bold text-[#3D7EFF] mb-3">
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1L4.5 6h4L6.5 13 12.5 6H8.5L11 1H7z" stroke="#3D7EFF" strokeWidth="1.4" strokeLinejoin="round"/></svg>
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1L4.5 6h4L6.5 13 12.5 6H8.5L11 1H7z" stroke="#3D7EFF" strokeWidth="1.4" strokeLinejoin="round" /></svg>
                   Expected Performance
                 </div>
                 {[
@@ -624,57 +715,164 @@ function FlowBuilderInner() {
 
         {/* ── PREVIEW PANEL ── */}
         <div className="flex-1 flex flex-col overflow-hidden min-w-[280px]">
-          <div className="bg-white border-b border-[#E5E7EB] px-6 py-3 flex items-center justify-between flex-shrink-0">
-            <div>
-              <p className="text-[13px] font-bold text-[#0F1B4C]">Live Preview</p>
-              <p className="text-[11px] text-[#9CA3AF] mt-0.5">Updates as you build</p>
-            </div>
+          <div className="bg-[#F2F2F2] border-b border-[#F2F2F2] px-6 py-3 flex items-center justify-between flex-shrink-0">
+
           </div>
-          <div className="flex-1 flex flex-col items-center justify-start p-7 gap-4 overflow-y-auto">
-            {/* Phone mockup */}
-            <div className="w-[238px] bg-[#1a1a1a] rounded-[40px] p-[11px] shadow-[0_24px_48px_rgba(0,0,0,0.25)]" style={{ boxShadow: "0 24px 48px rgba(0,0,0,0.25), inset 0 0 0 1px rgba(255,255,255,0.1)" }}>
-              <div className="w-14 h-2 bg-[#1a1a1a] rounded-full mx-auto mb-2" />
-              <div className="bg-white rounded-[32px] overflow-hidden min-h-[460px]">
-                {/* DM header */}
-                <div className="bg-white border-b border-[#F3F4F6] px-3 py-2.5 flex items-center gap-2">
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8l5 5" stroke="#374151" strokeWidth="1.6" strokeLinecap="round"/></svg>
-                  <div className="w-7 h-7 rounded-full bg-[#A78BFA] flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0">R</div>
-                  <div className="flex-1">
-                    <p className="text-[12px] font-bold text-[#0F1B4C]">@riya.creates</p>
-                    <p className="text-[10px] text-[#9CA3AF]">Creator</p>
+          <div className="flex-1 flex flex-col items-center justify-center p-7 gap-4 overflow-hidden">
+            {/* Phone mockup — iphone-Frame.png shell */}
+            <div className="relative flex-shrink-0" style={{ width: 300 }}>
+              {/* Invisible frame img sets container height from PNG aspect ratio */}
+              <img src="/zepply chat ui icons/iphone-Frame.png" alt="" className="w-full block" style={{ visibility: 'hidden' }} />
+
+              {/* Screen content — fills the inner screen area of the frame */}
+              <div className="absolute flex flex-col bg-[#000000] overflow-hidden"
+                style={{ top: '1.5%', left: '3.5%', right: '3.5%', bottom: '1.5%', borderRadius: 44, zIndex: 1 }}>
+
+                {/* Header */}
+                <div className="flex items-center gap-2 px-3.5 pt-3.5 pb-3 bg-[#000000] flex-shrink-0">
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="flex-shrink-0">
+                    <path d="M10 2.5L4 8l6 5.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  <img src="/zepply chat ui icons/demo profile image.png" alt="" className="w-8 h-8 rounded-full flex-shrink-0 object-cover" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[12px] font-bold text-white truncate leading-none">Riyacre...</p>
+                    <p className="text-[10px] text-[#777777] leading-none mt-1">riyacre...</p>
                   </div>
-                  <span className="text-[#9CA3AF] text-[14px]">···</span>
+                  <div className="flex items-center gap-3 flex-shrink-0">
+
+                    <img src="/zepply chat ui icons/telephone.png" alt="" className="w-[15px] h-[15px] object-contain" />
+                    <img src="/zepply chat ui icons/video.png" alt="" className="w-[15px] h-[15px] object-contain" />
+                    <img src="/zepply chat ui icons/label.png" alt="" className="w-[15px] h-[15px] object-contain" />
+                  </div>
                 </div>
+
                 {/* Messages */}
-                <div className="p-3 flex flex-col gap-2.5">
-                  <p className="text-[10px] text-[#9CA3AF] text-center">Just now</p>
-                  {/* Follower bubble */}
-                  <div className="flex items-end gap-1.5">
-                    <div className="w-5 h-5 rounded-full bg-[#E5E7EB] flex-shrink-0" />
-                    <div className="bg-[#F3F4F6] rounded-[16px_16px_16px_3px] px-3 py-2 text-[12px] text-[#0F1B4C] max-w-[85%]">
-                      {keywords[0] || (triggerType === "STORY_REPLY" ? "Replied to your story ✨" : "link")}
+                <div className="flex-1 px-3.5 pt-2.5 pb-2 flex flex-col gap-3 bg-[#000000] overflow-y-auto" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
+
+                  {/* Empty state — shown when nothing is configured yet */}
+                  {!anyKeyword && keywords.length === 0 && !showDmBubble && (
+                    <div className="flex-1 flex flex-col items-center justify-center gap-2 opacity-40">
+                      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+                        <path d="M4 20V8a2 2 0 012-2h16a2 2 0 012 2v8a2 2 0 01-2 2H8l-4 4z" stroke="#ffffff" strokeWidth="1.6" strokeLinejoin="round" />
+                      </svg>
+                      <p className="text-[11px] text-[#ffffff] text-center">Chat preview will appear{"\n"}as you build your flow</p>
                     </div>
-                  </div>
-                  {/* Creator bubble */}
-                  <div className="flex flex-col items-end gap-1.5">
-                    <div className="bg-[#3D7EFF] rounded-[16px_16px_3px_16px] px-3 py-2.5 text-[12px] text-white max-w-[90%] leading-[1.5] break-words">
-                      {previewDm}
-                    </div>
-                    {linkLabel && (
-                      <div className="bg-white/20 border border-white/40 rounded-[9px] px-3 py-1.5 text-[11px] text-[#3D7EFF] font-semibold border-[#3D7EFF] border bg-white">
-                        {linkLabel}
+                  )}
+
+                  {/* Timestamp — shown once any content exists */}
+                  {(anyKeyword || keywords.length > 0 || showDmBubble) && (
+                    <p className="text-[10px] text-[#444] text-center flex-shrink-0">Just now</p>
+                  )}
+
+                  {/* User keyword bubble — RIGHT, purple — shown when keyword(s) set */}
+                  {(anyKeyword || keywords.length > 0) && (
+                    <div className="flex justify-end flex-shrink-0">
+                      <div className="bg-[#7D24CE] rounded-[18px_18px_4px_18px] px-3.5 py-2 text-[13px] text-white max-w-[70%] leading-[1.4]">
+                        {anyKeyword
+                          ? (triggerType === "STORY_REPLY" ? "Replied to story ✨" : "Any comment")
+                          : keywords[0]}
                       </div>
-                    )}
-                    {leadOn && (
-                      <>
-                        <div className="bg-[#3D7EFF] rounded-[16px_16px_3px_16px] px-3 py-2.5 text-[12px] text-white max-w-[90%] leading-[1.5]">{leadText}</div>
-                        <div className="bg-[#F3F4F6] rounded-[16px_16px_16px_3px] px-3 py-2 text-[12px] text-[#0F1B4C] self-start">riya@gmail.com</div>
-                      </>
-                    )}
-                    <span className="text-[10px] text-[#9CA3AF]">Sent ✓</span>
+                    </div>
+                  )}
+
+                  {/* Opening DM bubble — shown as soon as user is on DM step and has typed */}
+                  {userHasReachedDmStep && openingDmOn && openingDmText.trim() && (
+                    <div className="flex items-end gap-2 flex-shrink-0">
+                      <div className="w-6 h-6 rounded-full flex-shrink-0 overflow-hidden flex items-center justify-center text-[10px] font-bold text-white" style={{ background: "linear-gradient(135deg,#833AB4,#FD1D1D,#FCB045)" }}>R</div>
+                      <div style={{ background: "#1E1F23", borderRadius: "18px 18px 18px 4px", maxWidth: "80%" }} className="overflow-hidden">
+                        <div className="px-3.5 pt-3 pb-2 text-[13px] text-white leading-[1.6] break-words">
+                          {openingDmText}
+                        </div>
+                        {openingDmBtnLabel && (
+                          <div className="px-3 pb-3">
+                            <div style={{
+                              background: "#2C2D32",
+                              borderRadius: "10px",
+                              padding: "9px 12px",
+                              textAlign: "center",
+                              color: "white",
+                              fontWeight: 700,
+                              fontSize: "12px",
+                              letterSpacing: "0.05em",
+                            }}>
+                              {openingDmBtnLabel}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Follower taps the button — shown as a reply bubble on the right */}
+                  {userHasReachedDmStep && openingDmOn && openingDmText.trim() && openingDmBtnLabel && (
+                    <div className="flex justify-end flex-shrink-0">
+                      <div className="bg-[#7D24CE] rounded-[18px_18px_4px_18px] px-3.5 py-2 text-[13px] text-white max-w-[70%] leading-[1.4]">
+                        {openingDmBtnLabel}
+                      </div>
+                    </div>
+                  )}
+
+
+                  {showDmBubble && (
+                    <div className="flex items-end gap-2 flex-shrink-0">
+                      <div className="w-6 h-6 rounded-full flex-shrink-0 overflow-hidden flex items-center justify-center text-[10px] font-bold text-white" style={{ background: "linear-gradient(135deg,#833AB4,#FD1D1D,#FCB045)" }}>R</div>
+                      <div className="flex flex-col gap-1.5 max-w-[80%]">
+                        {/* Unified card: message + inner rounded button */}
+                        <div style={{ background: "#1E1F23", borderRadius: "18px 18px 18px 4px" }}>
+                          <div className="px-3.5 pt-3 pb-2 text-[13px] text-white leading-[1.6] break-words">
+                            {previewDm}
+                          </div>
+                          {linkLabel && (
+                            <div className="px-3 pb-3">
+                              <div style={{
+                                background: "#2C2D32",
+                                borderRadius: "10px",
+                                padding: "9px 12px",
+                                textAlign: "center",
+                                color: "white",
+                                fontWeight: 700,
+                                fontSize: "12px",
+                                letterSpacing: "0.05em",
+                              }}>
+                                {linkLabel}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        {leadOn && (
+                          <>
+                            <div className="bg-[#1E1F23] rounded-[18px_18px_18px_4px] px-3.5 py-2.5 text-[13px] text-white leading-[1.4]">{leadText}</div>
+                            <div className="bg-[#7D24CE] rounded-[18px_18px_4px_18px] px-3.5 py-2 text-[13px] text-white self-end">riya |</div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Message input bar */}
+                <div className="bg-[#212121] px-1.5 py-1.5 flex items-center gap-2.5 flex-shrink-0" style={{ borderRadius: '32px', margin: '3%' }}>
+                  <div className="w-8 h-8 rounded-full bg-[#ffffff] flex items-center justify-center flex-shrink-0">
+                    <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+                      <circle cx="6.5" cy="6.5" r="4" stroke="#464DDB" strokeWidth="1.9" />
+                      <path d="M10.5 10.5l2.5 2.5" stroke="#464DDB" strokeWidth="1.9" strokeLinecap="round" />
+                    </svg>
+                  </div>
+                  <div className="flex-1 text-[14px] text-[#777777]">Message...</div>
+                  <div className="w-10 h-8 rounded-full bg-[#454EDB] flex items-center justify-center flex-shrink-0">
+                    <img src="/zepply chat ui icons/send.png" alt="" className="w-4 h-4 object-contain" />
                   </div>
                 </div>
+
               </div>
+
+              {/* iPhone frame PNG — on top of screen content */}
+              <img
+                src="/zepply chat ui icons/iphone-Frame.png"
+                alt=""
+                className="absolute inset-0 w-full h-full pointer-events-none select-none"
+                style={{ zIndex: 10 }}
+              />
             </div>
             <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[#22C55E]">
               <span className="w-1.5 h-1.5 rounded-full bg-[#22C55E]" />
@@ -725,16 +923,14 @@ function StepCard({
   return (
     <div
       id={`step-card-${id}`}
-      className={`bg-white border rounded-2xl mb-2.5 overflow-hidden transition-colors ${
-        isCurrent ? "border-[#BFDBFE]" : isLocked ? "border-[#E5E7EB] opacity-60" : "border-[#E5E7EB]"
-      }`}
+      className={`bg-white border rounded-2xl mb-2.5 overflow-hidden transition-colors ${isCurrent ? "border-[#BFDBFE]" : isLocked ? "border-[#E5E7EB] opacity-60" : "border-[#E5E7EB]"
+        }`}
     >
       <div className="flex items-center gap-2.5 px-4 py-3.5 cursor-pointer" onClick={isDone ? onEdit : undefined}>
-        <div className={`w-6.5 h-6.5 rounded-full flex items-center justify-center text-[12px] font-bold flex-shrink-0 transition-all ${
-          isDone ? "bg-[#3D7EFF] text-white" : isCurrent ? "bg-[#3D7EFF] text-white" : "bg-[#E5E7EB] text-[#9CA3AF]"
-        }`} style={{ width: 26, height: 26 }}>
+        <div className={`w-6.5 h-6.5 rounded-full flex items-center justify-center text-[12px] font-bold flex-shrink-0 transition-all ${isDone ? "bg-[#3D7EFF] text-white" : isCurrent ? "bg-[#3D7EFF] text-white" : "bg-[#E5E7EB] text-[#9CA3AF]"
+          }`} style={{ width: 26, height: 26 }}>
           {isDone ? (
-            <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M1.5 5.5l3 3 5-6" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M1.5 5.5l3 3 5-6" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
           ) : id}
         </div>
         <div className="flex-1 min-w-0">

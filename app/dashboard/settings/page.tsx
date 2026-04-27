@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
+
 import { PageHeader } from "@/components/shared/PageHeader";
 import { ConfirmModal } from "@/components/shared/ConfirmModal";
 import { formatDate } from "@/lib/utils";
@@ -67,18 +67,16 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-      <DashboardLayout>
-        <div className="animate-pulse space-y-6">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-40 bg-gray-200 dark:bg-gray-800 rounded-xl" />
-          ))}
-        </div>
-      </DashboardLayout>
+      <div className="animate-pulse space-y-6">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="h-40 bg-gray-200 dark:bg-gray-800 rounded-xl" />
+        ))}
+      </div>
     );
   }
 
   return (
-    <DashboardLayout>
+    <>
       <PageHeader title="Settings" description="Manage your account and preferences." />
 
       <div className="max-w-2xl space-y-6">
@@ -248,6 +246,6 @@ export default function SettingsPage() {
           </div>
         </>
       )}
-    </DashboardLayout>
+    </>
   );
 }

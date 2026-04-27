@@ -1,7 +1,7 @@
 "use client";
 
 // Stub upgrade page for Phase 1 — will be fully built in Phase 2 with payments
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
+
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Check, Lock } from "lucide-react";
 
@@ -24,7 +24,7 @@ const proFeatures = [
 
 export default function UpgradePage() {
   return (
-    <DashboardLayout>
+    <>
       <PageHeader title="Upgrade to Pro" description="Unlock AI replies and WhatsApp handoff." />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl">
@@ -79,6 +79,6 @@ export default function UpgradePage() {
           </button>
         </div>
       </div>
-    </DashboardLayout>
+    </>
   );
 }
