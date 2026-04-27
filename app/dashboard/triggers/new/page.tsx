@@ -794,6 +794,7 @@ function FlowBuilderInner() {
                               fontWeight: 700,
                               fontSize: "12px",
                               letterSpacing: "0.05em",
+                              wordBreak: "break-all",
                             }}>
                               {openingDmBtnLabel}
                             </div>
@@ -806,7 +807,7 @@ function FlowBuilderInner() {
                   {/* Follower taps the button — shown as a reply bubble on the right */}
                   {userHasReachedDmStep && openingDmOn && openingDmText.trim() && openingDmBtnLabel && (
                     <div className="flex justify-end flex-shrink-0">
-                      <div className="bg-[#7D24CE] rounded-[18px_18px_4px_18px] px-3.5 py-2 text-[13px] text-white max-w-[70%] leading-[1.4]">
+                      <div className="bg-[#7D24CE] rounded-[18px_18px_4px_18px] px-3.5 py-2 text-[13px] text-white max-w-[70%] leading-[1.4] break-all">
                         {openingDmBtnLabel}
                       </div>
                     </div>
@@ -833,6 +834,7 @@ function FlowBuilderInner() {
                                 fontWeight: 700,
                                 fontSize: "12px",
                                 letterSpacing: "0.05em",
+                                wordBreak: "break-all",
                               }}>
                                 {linkLabel}
                               </div>
