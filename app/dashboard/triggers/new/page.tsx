@@ -23,8 +23,8 @@ function FlowBuilderInner() {
   const isComment = triggerType === "COMMENT";
 
   const stepLabels = isComment
-    ? ["Choose Post", "Set Keywords", "Write DM", "Activate"]
-    : ["Set Keywords", "Write DM", "Activate"];
+    ? ["Choose Post", "Set Keywords", "Write DM", "Advanced", "Activate"]
+    : ["Set Keywords", "Write DM", "Advanced", "Activate"];
 
   const [currentStep, setCurrentStep] = useState(1);
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
@@ -53,7 +53,14 @@ function FlowBuilderInner() {
   const [openingDmText, setOpeningDmText] = useState("");
   const [openingDmBtnLabel, setOpeningDmBtnLabel] = useState("");
 
-  // Step 4
+  // Advanced
+  const [publicReplyOn, setPublicReplyOn] = useState(false);
+  const [publicReplies, setPublicReplies] = useState<string[]>(["Hey! Check your DMs 📩"]);
+  const [askFollowOn, setAskFollowOn] = useState(false);
+  const [followUpOn, setFollowUpOn] = useState(false);
+  const [followUpText, setFollowUpText] = useState("Hey {first_name}! Did you get a chance to check out the link I sent? 😊");
+
+  // Step 4 (Activate)
   const [autoName, setAutoName] = useState(() => {
     const map: Record<TriggerType, string> = {
       COMMENT: "Comment-to-DM: 'link'",
@@ -275,103 +282,119 @@ function FlowBuilderInner() {
         {/* Steps panel */}
         <div
           ref={stepsRef}
-          className="w-[380px] bg-[#F8FAFC] border-r border-[#E5E7EB] overflow-y-auto p-5 flex-shrink-0"
-          style={{ scrollbarWidth: "thin", scrollbarColor: "#E5E7EB transparent" }}
+          className="w-[430px] bg-[#F8FAFC] border-r border-[#E5E7EB] overflow-y-auto p-5 flex-shrink-0"
+          style={{ scrollbarWidth: "thin", scrollbarColor: "#E5E7EB transparent", scrollbarGutter: "stable", fontFamily: "'Roboto', sans-serif" }}
         >
 
           {/* ── STEP 1: Choose Post (COMMENT only) ── */}
           {isComment && (
             <StepCard
               id={1}
-              label="Choose Post"
+              label="Choose a Post"
               subtitle="Which post triggers this?"
               currentStep={currentStep}
               completedSteps={completedSteps}
               onEdit={() => goToStep(1)}
             >
-              {/* Radio options */}
-              <div className="flex flex-col gap-2 pt-3.5">
-                {(["specific", "next", "any"] as const).map((pt) => (
+              <div className="flex flex-col gap-3 pt-4">
+                {([
+                  { key: "specific", title: "Specific post", sub: "choose from existing posts" },
+                  { key: "next", title: "Next Post", sub: "Activates on your very next post" },
+                  { key: "any", title: "Any Post", sub: "works on all posts automatically" },
+                ] as const).map(({ key, title, sub }) => (
                   <div
-                    key={pt}
-                    onClick={() => setPostType(pt)}
-                    className={`flex items-center gap-2.5 p-3 rounded-xl border-[1.5px] cursor-pointer transition-all ${postType === pt ? "border-[#3D7EFF] bg-[#F8FAFF]" : "border-[#E5E7EB] hover:border-[#3D7EFF]"
-                      }`}
+                    key={key}
+                    onClick={() => setPostType(key)}
+                    className="flex items-center gap-3.5 px-5 py-2 cursor-pointer transition-all"
+                    style={{
+                      border: `1.5px solid ${postType === key ? '#2564FF' : '#D9D9D9'}`,
+                      background: '#FFFFFF',
+                      borderRadius: 18,
+                    }}
                   >
-                    <span className={`w-3.5 h-3.5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all ${postType === pt ? "border-[#3D7EFF] bg-[#3D7EFF]" : "border-[#E5E7EB]"
-                      }`}>
-                      {postType === pt && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
-                    </span>
+                    {/* Radio dot */}
+                    <div
+                      className="flex-shrink-0 flex items-center justify-center"
+                      style={{
+                        width: 20, height: 20, borderRadius: '50%',
+                        border: '2.5px solid #727272',
+                        background: '#FFFFFF',
+                        flexShrink: 0,
+                      }}
+                    >
+                      {postType === key && (
+                        <div style={{ width: 13, height: 13, borderRadius: '50%', background: '#2564FF' }} />
+                      )}
+                    </div>
                     <div>
-                      <p className="text-[13px] font-semibold text-[#0F1B4C] capitalize">{pt === "specific" ? "Specific Post" : pt === "next" ? "Next Post" : "Any Post"}</p>
-                      <p className="text-[11px] text-[#9CA3AF]">{pt === "specific" ? "Select from your existing posts" : pt === "next" ? "Activates on your very next post" : "Works on all posts automatically"}</p>
+                      <p className="text-[14px] font-bold leading-tight" style={{ color: '#000000' }}>{title}</p>
+                      <p className="text-[13px] mt-0.5" style={{ color: '#727272' }}>{sub}</p>
                     </div>
                   </div>
                 ))}
               </div>
 
-              {/* Post grid */}
+              {/* Post selector grid */}
               {postType === "specific" && (
-                <div className="mt-3">
-                  <div className="relative">
-                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-[#9CA3AF]">
-                      <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="6" cy="6" r="4" stroke="currentColor" strokeWidth="1.3" /><path d="M9.5 9.5l2 2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>
-                    </span>
-                    <input
-                      value={postSearch}
-                      onChange={(e) => setPostSearch(e.target.value)}
-                      placeholder="Search by caption..."
-                      className="w-full bg-[#F9FAFB] border border-[#E5E7EB] rounded-[10px] py-2 pl-8 pr-3 text-[13px] text-[#0F1B4C] outline-none focus:border-[#3D7EFF]"
-                    />
+                <div className="mt-4">
+                  {/* Tab bar */}
+                  <div className="flex gap-5 pb-0" style={{ borderBottom: '1.5px solid #D9D9D9' }}>
+                    {["All", "Reels", "Posts", "Carousels"].map((label) => {
+                      const filterVal = label === "All" ? "All" : label === "Reels" ? "Reel" : label === "Posts" ? "Post" : "Carousel";
+                      const active = postFilter === filterVal;
+                      return (
+                        <button
+                          key={label}
+                          onClick={() => setPostFilter(filterVal)}
+                          className="pb-2.5 text-[13px] font-semibold border-b-2 -mb-px transition-all"
+                          style={{ borderColor: active ? '#000000' : 'transparent', color: active ? '#000000' : '#8A8A8A' }}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
                   </div>
-                  <div className="flex gap-4 mt-2.5 border-b border-[#F3F4F6] pb-0">
-                    {["All", "Reel", "Post", "Carousel"].map((f) => (
-                      <button
-                        key={f}
-                        onClick={() => setPostFilter(f)}
-                        className={`text-[12px] font-semibold pb-2 border-b-2 transition-all ${postFilter === f ? "text-[#3D7EFF] border-[#3D7EFF]" : "text-[#9CA3AF] border-transparent"}`}
-                      >
-                        {f === "All" ? "All" : f + "s"}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 mt-2.5">
-                    {filteredPosts.map((p) => (
+
+                  {/* 3-column portrait grid */}
+                  <div className="grid grid-cols-3 gap-2 mt-3">
+                    {filteredPosts.slice(0, 3).map((p) => (
                       <div
                         key={p.id}
                         onClick={() => setSelectedPost(p.id)}
-                        className={`border-[1.5px] rounded-[10px] overflow-hidden cursor-pointer transition-all ${selectedPost === p.id ? "border-[#3D7EFF] bg-[#EEF2FF]" : "border-[#E5E7EB] hover:border-[#3D7EFF]"
-                          }`}
+                        className="cursor-pointer rounded-xl overflow-hidden transition-all"
+                        style={{
+                          border: `2px solid ${selectedPost === p.id ? '#2564FF' : '#D9D9D9'}`,
+                        }}
                       >
-                        <div className="relative aspect-square" style={{ background: p.grad }}>
-                          {selectedPost === p.id && (
-                            <div className="absolute inset-0 bg-[rgba(61,126,255,0.15)]" />
-                          )}
-                          <span className="absolute top-1.5 right-1.5 bg-white/90 text-[9px] font-semibold text-[#374151] px-1.5 py-0.5 rounded-md">{p.type}</span>
-                          {selectedPost === p.id && (
-                            <span className="absolute top-1.5 left-1.5 w-4.5 h-4.5 bg-[#3D7EFF] rounded-full flex items-center justify-center">
-                              <svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M1 4l2 2 4-4" stroke="white" strokeWidth="1.4" strokeLinecap="round" /></svg>
-                            </span>
-                          )}
-                        </div>
-                        <div className="p-2">
-                          <p className="text-[12px] font-medium text-[#0F1B4C] truncate">{p.caption}</p>
-                          <div className="flex justify-between mt-0.5 text-[10px] text-[#9CA3AF]">
-                            <span>{p.date}</span><span>❤ {p.likes}</span>
-                          </div>
-                        </div>
+                        <div
+                          style={{ aspectRatio: '3/4', background: '#D9D9D9' }}
+                        />
                       </div>
                     ))}
                   </div>
+
+                  {/* Load More */}
+                  <button
+                    className="w-full mt-3 py-3 rounded-xl text-[13px] font-semibold"
+                    style={{ background: '#F3F3F3', color: '#606060', border: '1.5px dashed #AAAAAA' }}
+                  >
+                    Load More
+                  </button>
                 </div>
               )}
 
+              {/* Next button */}
               <button
                 onClick={() => step1Valid && goToStep(2)}
                 disabled={!step1Valid}
-                className={`w-full mt-3.5 py-3 rounded-xl text-[14px] font-bold transition-all ${step1Valid ? "bg-[#3D7EFF] text-white hover:opacity-90" : "bg-[#E5E7EB] text-[#9CA3AF] cursor-not-allowed"}`}
+                className="w-full mt-4 py-2.5 rounded-xl text-[14px] font-bold transition-all"
+                style={{
+                  background: step1Valid ? '#2564FF' : '#D9D9D9',
+                  color: step1Valid ? '#FFFFFF' : '#9F9F9F',
+                  cursor: step1Valid ? 'pointer' : 'not-allowed',
+                }}
               >
-                Continue to Keywords →
+                Next
               </button>
             </StepCard>
           )}
@@ -470,7 +493,7 @@ function FlowBuilderInner() {
               <div className="bg-white border border-[#E5E7EB] rounded-xl p-3.5 mb-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 10V3a1 1 0 011-1h8a1 1 0 011 1v5a1 1 0 01-1 1H5L2 10z" stroke="#3D7EFF" strokeWidth="1.4" strokeLinejoin="round"/></svg>
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 10V3a1 1 0 011-1h8a1 1 0 011 1v5a1 1 0 01-1 1H5L2 10z" stroke="#3D7EFF" strokeWidth="1.4" strokeLinejoin="round" /></svg>
                     <p className="text-[13px] font-bold text-[#0F1B4C]">Opening DM</p>
                     <span className="text-[10px] font-bold bg-[#EEF2FF] text-[#3D7EFF] border border-[#BFDBFE] px-2 py-0.5 rounded-full">Optional</span>
                   </div>
@@ -533,14 +556,14 @@ function FlowBuilderInner() {
                     title="Edit"
                     className="w-6 h-6 rounded-md flex items-center justify-center text-[#3D7EFF] hover:bg-[#DBEAFE] transition-colors flex-shrink-0"
                   >
-                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M8 1.5a1.2 1.2 0 011.7 1.7L3.5 9.4l-2 .6.6-2L8 1.5z" stroke="#3D7EFF" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M8 1.5a1.2 1.2 0 011.7 1.7L3.5 9.4l-2 .6.6-2L8 1.5z" stroke="#3D7EFF" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
                   </button>
                   <button
                     onClick={() => { setLinkLabel(""); setLinkUrl(""); setLinkOpen(false); setLinkUrlError(""); }}
                     title="Remove"
                     className="w-6 h-6 rounded-md flex items-center justify-center text-[#EF4444] hover:bg-[#FEE2E2] transition-colors flex-shrink-0"
                   >
-                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 2l6 6M8 2L2 8" stroke="#EF4444" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 2l6 6M8 2L2 8" stroke="#EF4444" strokeWidth="1.5" strokeLinecap="round" /></svg>
                   </button>
                 </div>
               ) : (
@@ -640,11 +663,162 @@ function FlowBuilderInner() {
               disabled={!step3Valid}
               className={`w-full mt-3.5 py-3 rounded-xl text-[14px] font-bold transition-all ${step3Valid ? "bg-[#3D7EFF] text-white hover:opacity-90" : "bg-[#E5E7EB] text-[#9CA3AF] cursor-not-allowed"}`}
             >
-              Continue to Activate →
+              Continue to Advanced →
             </button>
           </StepCard>
 
-          {/* ── STEP 4 (or 3): Review & Activate ── */}
+          {/* ── Advanced Automations Step ── */}
+          <StepCard
+            id={isComment ? 4 : 3}
+            label="Advanced"
+            subtitle="Smart engagement automations"
+            currentStep={currentStep}
+            completedSteps={completedSteps}
+            onEdit={() => goToStep(isComment ? 4 : 3)}
+          >
+            <div className="pt-3.5 space-y-3">
+
+              {/* Publicly reply to comments */}
+              <div className="bg-white border border-[#E5E7EB] rounded-xl p-3.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg bg-[#F0F7FF] flex items-center justify-center flex-shrink-0">
+                      <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 9.5V3a1 1 0 011-1h7a1 1 0 011 1v5a1 1 0 01-1 1H5L2 9.5z" stroke="#3D7EFF" strokeWidth="1.3" strokeLinejoin="round" /></svg>
+                    </div>
+                    <p className="text-[13px] font-bold text-[#0F1B4C]">Publicly reply to comments</p>
+                  </div>
+                  <Toggle on={publicReplyOn} onToggle={() => setPublicReplyOn(!publicReplyOn)} />
+                </div>
+                <p className="text-[12px] text-[#6B7280] mt-1.5 leading-[1.4]">Auto-reply publicly under the comment to drive more followers to DM you.</p>
+                {publicReplyOn && (
+                  <div className="mt-3 space-y-2">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-[12px] font-semibold text-[#374151]">Reply variations</p>
+                      <span className="text-[10px] font-bold bg-[#EEF2FF] text-[#3D7EFF] border border-[#BFDBFE] px-2 py-0.5 rounded-full">🔀 Randomized</span>
+                    </div>
+                    <p className="text-[11px] text-[#9CA3AF] -mt-1 mb-2">Instagram rotates between these to feel natural.</p>
+
+                    {/* Reply list */}
+                    {publicReplies.map((reply, idx) => (
+                      <div key={idx} className="flex items-start gap-2">
+                        <div className="flex-shrink-0 w-5 h-5 rounded-full bg-[#EEF2FF] flex items-center justify-center text-[10px] font-bold text-[#3D7EFF] mt-2.5">{idx + 1}</div>
+                        <textarea
+                          value={reply}
+                          onChange={(e) => {
+                            const updated = [...publicReplies];
+                            updated[idx] = e.target.value;
+                            setPublicReplies(updated);
+                          }}
+                          placeholder="e.g. Hey! Check your DMs 📩"
+                          className="flex-1 min-h-[52px] bg-[#F9FAFB] border border-[#E5E7EB] rounded-[10px] px-3 py-2 text-[13px] leading-[1.5] text-[#0F1B4C] resize-none outline-none focus:border-[#3D7EFF] transition-colors"
+                        />
+                        {publicReplies.length > 1 && (
+                          <button
+                            onClick={() => setPublicReplies(publicReplies.filter((_, i) => i !== idx))}
+                            className="w-6 h-6 rounded-md flex items-center justify-center text-[#EF4444] hover:bg-[#FEE2E2] transition-colors flex-shrink-0 mt-2.5"
+                            title="Remove"
+                          >
+                            <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 2l6 6M8 2L2 8" stroke="#EF4444" strokeWidth="1.5" strokeLinecap="round" /></svg>
+                          </button>
+                        )}
+                      </div>
+                    ))}
+
+                    {/* Add reply button */}
+                    {publicReplies.length < 5 && (
+                      <button
+                        onClick={() => setPublicReplies([...publicReplies, ""])}
+                        className="flex items-center gap-1.5 text-[12px] font-semibold text-[#3D7EFF] hover:text-[#2563EB] transition-colors mt-1"
+                      >
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="#3D7EFF" strokeWidth="1.5" strokeLinecap="round" /></svg>
+                        Add another reply
+                      </button>
+                    )}
+
+                    {/* Quick defaults */}
+                    <div className="pt-1">
+                      <p className="text-[11px] text-[#9CA3AF] mb-1.5">Add from defaults:</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {[
+                          "Hey! Check your DMs 📩",
+                          "Sent you a DM! ✉️",
+                          "DM incoming! 🚀",
+                          "Check your DMs for the link! 🔗",
+                          "I just DM'd you 👀",
+                        ].map((t) => {
+                          const alreadyAdded = publicReplies.includes(t);
+                          return (
+                            <button
+                              key={t}
+                              disabled={alreadyAdded || publicReplies.length >= 5}
+                              onClick={() => !alreadyAdded && publicReplies.length < 5 && setPublicReplies([...publicReplies, t])}
+                              className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors ${alreadyAdded
+                                ? "bg-[#EEF2FF] border-[#3D7EFF] text-[#3D7EFF] font-bold opacity-60 cursor-default"
+                                : publicReplies.length >= 5
+                                  ? "bg-white border-[#E5E7EB] text-[#9CA3AF] cursor-not-allowed"
+                                  : "bg-white border-[#E5E7EB] text-[#374151] hover:border-[#3D7EFF] cursor-pointer"
+                                }`}
+                            >
+                              {alreadyAdded ? "✓ " : "+ "}{t}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Ask to follow before sending DM */}
+              <div className="bg-white border border-[#E5E7EB] rounded-xl p-3.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg bg-[#FFF7ED] flex items-center justify-center flex-shrink-0">
+                      <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="6.5" cy="4.5" r="2.5" stroke="#F97316" strokeWidth="1.3" /><path d="M1.5 11.5c0-2.5 2-4 5-4s5 1.5 5 4" stroke="#F97316" strokeWidth="1.3" strokeLinecap="round" /></svg>
+                    </div>
+                    <p className="text-[13px] font-bold text-[#0F1B4C]">Ask to follow before sending DM</p>
+                  </div>
+                  <Toggle on={askFollowOn} onToggle={() => setAskFollowOn(!askFollowOn)} />
+                </div>
+                <p className="text-[12px] text-[#6B7280] mt-1.5 leading-[1.4]">Only send the DM after the follower follows your account — boosts your follower count.</p>
+              </div>
+
+              {/* Send follow-up message */}
+              <div className="bg-white border border-[#E5E7EB] rounded-xl p-3.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg bg-[#F0FDF4] flex items-center justify-center flex-shrink-0">
+                      <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M1.5 3.5h10M1.5 6.5h6M1.5 9.5h4" stroke="#22C55E" strokeWidth="1.3" strokeLinecap="round" /></svg>
+                    </div>
+                    <p className="text-[13px] font-bold text-[#0F1B4C]">Send follow-up message</p>
+                    <span className="text-[10px] font-bold bg-[#F0FDF4] text-[#16A34A] border border-[#BBF7D0] px-2 py-0.5 rounded-full">+35% opens</span>
+                  </div>
+                  <Toggle on={followUpOn} onToggle={() => setFollowUpOn(!followUpOn)} />
+                </div>
+                <p className="text-[12px] text-[#6B7280] mt-1.5 leading-[1.4]">Send a follow-up DM after 24h if they haven't clicked your link yet.</p>
+                {followUpOn && (
+                  <div className="mt-3">
+                    <p className="text-[12px] font-semibold text-[#374151] mb-1">Follow-up message</p>
+                    <textarea
+                      value={followUpText}
+                      onChange={(e) => setFollowUpText(e.target.value)}
+                      className="w-full min-h-[65px] bg-[#F9FAFB] border border-[#E5E7EB] rounded-[10px] px-3 py-2.5 text-[13px] leading-[1.6] text-[#0F1B4C] resize-none outline-none focus:border-[#3D7EFF] transition-colors"
+                    />
+                    <p className="text-[11px] text-[#9CA3AF] mt-1">Sent automatically 24 hours after the original DM.</p>
+                  </div>
+                )}
+              </div>
+
+              <button
+                onClick={() => goToStep(totalSteps)}
+                className="w-full mt-1 py-3 rounded-xl text-[14px] font-bold bg-[#3D7EFF] text-white hover:opacity-90 transition-all"
+              >
+                Continue to Activate →
+              </button>
+            </div>
+          </StepCard>
+
+          {/* ── Activate Step ── */}
           <StepCard
             id={totalSteps}
             label="Review & Activate"
@@ -729,7 +903,7 @@ function FlowBuilderInner() {
                 style={{ top: '1.5%', left: '3.5%', right: '3.5%', bottom: '1.5%', borderRadius: 44, zIndex: 1 }}>
 
                 {/* Header */}
-                <div className="flex items-center gap-2 px-3.5 pt-3.5 pb-3 bg-[#000000] flex-shrink-0">
+                <div className="flex items-center gap-2 px-3.5 pt-7 pb-3 bg-[#000000] flex-shrink-0">
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="flex-shrink-0">
                     <path d="M10 2.5L4 8l6 5.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
@@ -920,31 +1094,54 @@ function StepCard({
 }) {
   const isDone = completedSteps.has(id);
   const isCurrent = currentStep === id;
-  const isLocked = !isDone && !isCurrent;
 
   return (
     <div
       id={`step-card-${id}`}
-      className={`bg-white border rounded-2xl mb-2.5 overflow-hidden transition-colors ${isCurrent ? "border-[#BFDBFE]" : isLocked ? "border-[#E5E7EB] opacity-60" : "border-[#E5E7EB]"
-        }`}
+      className="bg-white rounded-2xl mb-3 overflow-hidden"
+      style={{ border: '1px solid #9F9F9F' }}
     >
-      <div className="flex items-center gap-2.5 px-4 py-3.5 cursor-pointer" onClick={isDone ? onEdit : undefined}>
-        <div className={`w-6.5 h-6.5 rounded-full flex items-center justify-center text-[12px] font-bold flex-shrink-0 transition-all ${isDone ? "bg-[#3D7EFF] text-white" : isCurrent ? "bg-[#3D7EFF] text-white" : "bg-[#E5E7EB] text-[#9CA3AF]"
-          }`} style={{ width: 26, height: 26 }}>
-          {isDone ? (
-            <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M1.5 5.5l3 3 5-6" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
+      {/* Card header */}
+      <div
+        className="flex items-center gap-3 px-4 py-4"
+        style={{ cursor: isDone && !isCurrent ? 'pointer' : 'default' }}
+        onClick={isDone && !isCurrent ? onEdit : undefined}
+      >
+        {/* Number / check circle */}
+        <div
+          className="flex-shrink-0 flex items-center justify-center text-[14px] font-bold"
+          style={{
+            width: 24, height: 24, borderRadius: '50%',
+            background: isCurrent ? '#2564FF' : isDone ? '#2564FF' : '#D9D9D9',
+            color: isCurrent || isDone ? '#FFFFFF' : '#606060',
+          }}
+        >
+          {isDone && !isCurrent ? (
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <path d="M2 6l3 3 5-5" stroke="white" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
           ) : id}
         </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-[14px] font-bold text-[#0F1B4C]">{label}</p>
-          <p className="text-[11px] text-[#9CA3AF] mt-0.5">{subtitle}</p>
-        </div>
+        <p
+          className="flex-1 text-[16px] font-bold"
+          style={{ color: isCurrent ? '#000000' : isDone ? '#000000' : '#8A8A8A' }}
+        >
+          {label}
+        </p>
         {isDone && !isCurrent && (
-          <button onClick={onEdit} className="text-[12px] text-[#3D7EFF] hover:underline flex-shrink-0">Edit</button>
+          <button
+            onClick={(e) => { e.stopPropagation(); onEdit(); }}
+            className="text-[13px] font-semibold"
+            style={{ color: '#2564FF' }}
+          >
+            Edit
+          </button>
         )}
       </div>
+
+      {/* Expanded content */}
       {isCurrent && (
-        <div className="px-4 pb-4 border-t border-[#F3F4F6]">
+        <div className="px-4 pb-5" style={{ borderTop: '1px solid #F3F3F3' }}>
           {children}
         </div>
       )}
