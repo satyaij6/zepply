@@ -15,9 +15,9 @@ const BUBBLES = [
   { id: 1, type: "bot", src: "/chat-bubble-1.png", alt: "Here's your 30-day home workout plan", width: 240, height: 110, mr: 0 },
   { id: 2, type: "user", src: "/user-bubble-1.png", alt: "Looks good. Do you have more plans?", width: 240, height: 80, mr: 140 },
   { id: 3, type: "bot", src: "/chat-bubble-2.png", alt: "Yes! I have 8-week fat loss and muscle gain programs", width: 240, height: 100, mr: 0 },
-  { id: 4, type: "user", src: "/user-bubble-2.png", alt: "Sure, show me", width: 240, height: 70, mr: 140 },
+  { id: 4, type: "user", src: "/user-bubble-2.png", alt: "Sure, show me", width: 240, height: 60, mr: 140 },
   { id: 5, type: "bot", src: "/chat-bubble-3.png", alt: "Here are my popular programs", width: 240, height: 110, mr: 0 },
-  { id: 6, type: "user", src: "/user-bubble-3.png", alt: "I need this plan!", width: 240, height: 70, mr: 140 },
+  { id: 6, type: "user", src: "/user-bubble-3.png", alt: "I need this plan!", width: 240, height: 60, mr: 140 },
 ];
 
 export default function HeroSection({ onJoin, submitted, loading }: HeroProps) {
@@ -112,10 +112,10 @@ export default function HeroSection({ onJoin, submitted, loading }: HeroProps) {
           <p style={{
             fontFamily: "'Poppins', sans-serif",
             fontWeight: 400,
-            fontSize: 16,
+            fontSize: 18,
             color: "#2a2a2a",
             lineHeight: 1.68,
-            maxWidth: 430,
+            maxWidth: 450,
             margin: 0,
           }}>
             Auto-reply to every comment, grow your followers, and close sales

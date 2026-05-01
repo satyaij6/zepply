@@ -1,49 +1,22 @@
-"use client";
-
-import { useState } from "react";
+import dynamic from "next/dynamic";
 import LandingNavbar from "@/components/landing/LandingNavbar";
-import HeroSection from "@/components/landing/HeroSection";
+import WaitlistHero from "@/components/landing/WaitlistHero";
 import TrustStrip from "@/components/landing/TrustStrip";
 import PainSection from "@/components/landing/PainSection";
-import HowItWorks from "@/components/landing/HowItWorks";
 import UseCases from "@/components/landing/UseCases";
 import FeaturesSection from "@/components/landing/FeaturesSection";
 import ComparisonTable from "@/components/landing/ComparisonTable";
-import CTASection from "@/components/landing/CTASection";
-import FAQSection from "@/components/landing/FAQSection";
 import LandingFooter from "@/components/landing/LandingFooter";
 
+const HowItWorks = dynamic(() => import("@/components/landing/HowItWorks"));
+const FAQSection = dynamic(() => import("@/components/landing/FAQSection"));
+const WaitlistCTA = dynamic(() => import("@/components/landing/WaitlistCTA"));
+
 export default function HomePage() {
-  const [email, setEmail] = useState("");
-  const [submitted, setSubmitted] = useState(false);
-  const [loading, setLoading] = useState(false);
-
-  const handleJoin = async (emailOverride?: string) => {
-    const target = emailOverride || email;
-    if (!target.includes("@")) return;
-    setLoading(true);
-    try {
-      await fetch("/api/waitlist", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: target }),
-      });
-      setSubmitted(true);
-    } catch {
-      setSubmitted(true);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const scrollToCTA = () => {
-    document.getElementById("cta-section")?.scrollIntoView({ behavior: "smooth", block: "center" });
-  };
-
   return (
     <div style={{ fontFamily: "'Poppins', sans-serif", background: "#ffffff", color: "#0d0d0d", overflowX: "hidden" }}>
-      <LandingNavbar onJoinClick={scrollToCTA} />
-      <HeroSection email={email} setEmail={setEmail} onJoin={handleJoin} submitted={submitted} loading={loading} />
+      <LandingNavbar />
+      <WaitlistHero />
       <TrustStrip />
       <PainSection />
       <HowItWorks />
@@ -51,7 +24,7 @@ export default function HomePage() {
       <FeaturesSection />
       <ComparisonTable />
       <div id="cta-section">
-        <CTASection email={email} setEmail={setEmail} onJoin={handleJoin} submitted={submitted} loading={loading} />
+        <WaitlistCTA />
       </div>
       <FAQSection />
       <LandingFooter />

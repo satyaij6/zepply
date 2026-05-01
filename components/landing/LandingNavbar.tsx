@@ -1,6 +1,6 @@
 "use client";
 
-export default function LandingNavbar({ onJoinClick }: { onJoinClick: () => void }) {
+export default function LandingNavbar() {
   const links = ["How it works", "Use Cases", "Pricing", "Learn"];
 
   return (
@@ -42,7 +42,7 @@ export default function LandingNavbar({ onJoinClick }: { onJoinClick: () => void
         </span>
 
         {/* Nav Links */}
-        <div style={{ display: "flex", alignItems: "center", gap: 4, flex: 1 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 4, marginLeft: "auto", marginRight: 16 }}>
           {links.map(l => (
             <button
               key={l}
@@ -74,9 +74,10 @@ export default function LandingNavbar({ onJoinClick }: { onJoinClick: () => void
         </div>
 
         {/* CTA */}
-        <button
-          onClick={onJoinClick}
+        <a
+          href="#cta-section"
           style={{
+            textDecoration: "none",
             fontFamily: "'Poppins', sans-serif",
             fontWeight: 500,
             fontSize: 14,
@@ -94,7 +95,7 @@ export default function LandingNavbar({ onJoinClick }: { onJoinClick: () => void
           onMouseLeave={e => { e.currentTarget.style.background = "#ffffff"; }}
         >
           JOIN WAITLIST
-        </button>
+        </a>
       </div>
     </nav>
   );
