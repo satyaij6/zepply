@@ -115,7 +115,7 @@ export default function HeroSection({ onJoin, submitted, loading }: HeroProps) {
             fontSize: 18,
             color: "#2a2a2a",
             lineHeight: 1.68,
-            maxWidth: 450,
+            maxWidth: 480,
             margin: 0,
           }}>
             Auto-reply to every comment, grow your followers, and close sales
