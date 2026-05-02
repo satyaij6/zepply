@@ -1031,7 +1031,7 @@ function FlowBuilderInner() {
                   <SumRow label={isStoryReply ? "Story" : "Post"} value={
                     postType !== "specific"
                       ? (postType === "next" ? `Next ${isStoryReply ? "Story" : "Post"}` : `Any ${isStoryReply ? "Story" : "Post"}`)
-                      : (MOCK_POSTS.find((p) => p.id === selectedPost)?.caption.slice(0, 28) + "..." || "—")
+                      : (allPosts.find((p) => p.id === selectedPost)?.caption.slice(0, 28) + "..." || "—")
                   } onEdit={() => goToStep(1)} />
                 )}
                 <SumRow label="Keywords" value={anyKeyword ? "Any keyword" : (keywords.join(", ") || "—")} onEdit={() => goToStep(hasMediaStep ? 2 : 1)} />
@@ -1081,7 +1081,7 @@ function FlowBuilderInner() {
                   <div className="w-1/2 h-full flex flex-col bg-[#000000] text-white relative overflow-hidden">
                     {isStoryReply ? (
                       // ── STORY UI ──
-                      <div className="absolute inset-0 w-full h-full flex flex-col" style={{ background: MOCK_POSTS.find(p => p.id === selectedPost)?.grad || 'linear-gradient(135deg, #1E1F23, #2C2D32)' }}>
+                      <div className="absolute inset-0 w-full h-full flex flex-col" style={{ background: allPosts.find(p => p.id === selectedPost)?.grad || 'linear-gradient(135deg, #1E1F23, #2C2D32)' }}>
                         {/* Safe area spacer */}
                         <div className="h-10 w-full" />
 
@@ -1137,7 +1137,7 @@ function FlowBuilderInner() {
                             className="w-full"
                             style={{
                               aspectRatio: '4/5',
-                              background: MOCK_POSTS.find(p => p.id === selectedPost)?.grad || 'linear-gradient(135deg, #1E1F23, #2C2D32)'
+                              background: allPosts.find(p => p.id === selectedPost)?.grad || 'linear-gradient(135deg, #1E1F23, #2C2D32)'
                             }}
                           />
 
@@ -1151,10 +1151,10 @@ function FlowBuilderInner() {
                               </div>
                               <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2v16z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
                             </div>
-                            <p className="text-[13px] font-bold mb-1">{MOCK_POSTS.find(p => p.id === selectedPost)?.likes || "1.2K"} likes</p>
+                            <p className="text-[13px] font-bold mb-1">{allPosts.find(p => p.id === selectedPost)?.likes || "1.2K"} likes</p>
                             <p className="text-[13px]">
                               <span className="font-bold mr-1">Riyacreations</span>
-                              {MOCK_POSTS.find(p => p.id === selectedPost)?.caption || "Amazing new post!"}
+                              {allPosts.find(p => p.id === selectedPost)?.caption || "Amazing new post!"}
                             </p>
                           </div>
                         </div>
@@ -1266,7 +1266,7 @@ function FlowBuilderInner() {
                             <div
                               className="w-[85px] h-[140px] rounded-[14px] overflow-hidden border border-[#2C2D32]"
                               style={{
-                                background: MOCK_POSTS.find(p => p.id === selectedPost)?.grad || 'linear-gradient(135deg, #2A2A35, #1E1F23)'
+                                background: allPosts.find(p => p.id === selectedPost)?.grad || 'linear-gradient(135deg, #2A2A35, #1E1F23)'
                               }}
                             />
                             <div className="bg-[#7D24CE] rounded-[18px_18px_4px_18px] px-3.5 py-2 text-[13px] text-white max-w-[70%] leading-[1.4] mt-1 break-all">
