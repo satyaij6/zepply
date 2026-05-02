@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import { ConfirmModal } from "@/components/shared/ConfirmModal";
 import { TriggerCard } from "@/components/triggers/TriggerCard";
 import { NewAutomationModal } from "@/components/dashboard/NewAutomationModal";
-import { Zap, Plus } from "lucide-react";
+import { ActivityFeed } from "@/components/dashboard/ActivityFeed";
+import { Zap, Plus, History } from "lucide-react";
 
 const filterTabs = [
   { value: "", label: "All" },
@@ -24,10 +25,28 @@ export default function TriggersPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
-
+  const [history, setHistory] = useState<any[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
+ 
   useEffect(() => {
     fetchTriggers();
+    fetchHistory();
   }, [filter]);
+
+  const fetchHistory = async () => {
+    setHistoryLoading(true);
+    try {
+      const res = await fetch("/api/leads?limit=10");
+      if (res.ok) {
+        const data = await res.json();
+        setHistory(data.leads);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
 
   const fetchTriggers = async () => {
     setLoading(true);
@@ -102,59 +121,99 @@ export default function TriggersPage() {
         </button>
       </div>
 
-      {/* Filter tabs */}
-      <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
-        {filterTabs.map((tab) => (
-          <button
-            key={tab.value}
-            onClick={() => setFilter(tab.value)}
-            className={`px-4 py-2 text-sm font-medium rounded-full transition-all whitespace-nowrap ${
-              filter === tab.value
-                ? "bg-[#3D7EFF] text-white"
-                : "bg-white text-[#6B7280] border border-[#E5E7EB] hover:border-[#3D7EFF] hover:text-[#3D7EFF]"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Triggers list */}
-      {loading ? (
-        <div className="space-y-3">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-32 bg-white rounded-2xl border border-[#E5E7EB] animate-pulse" />
-          ))}
-        </div>
-      ) : triggers.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-[#E5E7EB] p-12 flex flex-col items-center text-center">
-          <div className="w-16 h-16 rounded-2xl bg-[#EEF2FF] flex items-center justify-center mb-4">
-            <Zap className="w-8 h-8 text-[#3D7EFF]" />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2">
+          {/* Filter tabs */}
+          <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
+            {filterTabs.map((tab) => (
+              <button
+                key={tab.value}
+                onClick={() => setFilter(tab.value)}
+                className={`px-4 py-2 text-sm font-medium rounded-full transition-all whitespace-nowrap ${
+                  filter === tab.value
+                    ? "bg-[#3D7EFF] text-white"
+                    : "bg-white text-[#6B7280] border border-[#E5E7EB] hover:border-[#3D7EFF] hover:text-[#3D7EFF]"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
-          <h3 className="text-[18px] font-bold text-[#0F1B4C] mb-2">No automations yet</h3>
-          <p className="text-[14px] text-[#6B7280] mb-6 max-w-md">
-            Create your first automation to auto-reply to comments, DMs, and grow your audience.
-          </p>
-          <button
-            onClick={() => setModalOpen(true)}
-            className="flex items-center gap-1.5 px-5 py-2.5 bg-[#3D7EFF] text-white rounded-full text-sm font-semibold hover:opacity-90 transition-opacity"
-          >
-            <Plus className="w-4 h-4" /> Create Your First Automation
-          </button>
+
+          {/* Triggers list */}
+          {loading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-32 bg-white rounded-2xl border border-[#E5E7EB] animate-pulse" />
+              ))}
+            </div>
+          ) : triggers.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-[#E5E7EB] p-12 flex flex-col items-center text-center">
+              <div className="w-16 h-16 rounded-2xl bg-[#EEF2FF] flex items-center justify-center mb-4">
+                <Zap className="w-8 h-8 text-[#3D7EFF]" />
+              </div>
+              <h3 className="text-[18px] font-bold text-[#0F1B4C] mb-2">No automations yet</h3>
+              <p className="text-[14px] text-[#6B7280] mb-6 max-w-md">
+                Create your first automation to auto-reply to comments, DMs, and grow your audience.
+              </p>
+              <button
+                onClick={() => setModalOpen(true)}
+                className="flex items-center gap-1.5 px-5 py-2.5 bg-[#3D7EFF] text-white rounded-full text-sm font-semibold hover:opacity-90 transition-opacity"
+              >
+                <Plus className="w-4 h-4" /> Create Your First Automation
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {triggers.map((trigger) => (
+                <TriggerCard
+                  key={trigger.id}
+                  trigger={trigger}
+                  onToggle={handleToggle}
+                  onEdit={handleEdit}
+                  onDelete={(id) => setDeleteId(id)}
+                />
+              ))}
+            </div>
+          )}
         </div>
-      ) : (
-        <div className="space-y-3">
-          {triggers.map((trigger) => (
-            <TriggerCard
-              key={trigger.id}
-              trigger={trigger}
-              onToggle={handleToggle}
-              onEdit={handleEdit}
-              onDelete={(id) => setDeleteId(id)}
-            />
-          ))}
+
+        {/* History Sidebar */}
+        <div className="space-y-6">
+          <div className="bg-white rounded-2xl border border-[#E5E7EB] p-6 sticky top-24">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
+                  <History className="w-4 h-4 text-blue-600" />
+                </div>
+                <h3 className="font-bold text-[#0F1B4C]">Recent Activity</h3>
+              </div>
+              <button 
+                onClick={() => router.push("/dashboard/leads")}
+                className="text-xs font-medium text-blue-600 hover:underline"
+              >
+                View all
+              </button>
+            </div>
+
+            {historyLoading ? (
+              <div className="space-y-4">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="flex gap-3">
+                    <div className="w-8 h-8 rounded-full bg-gray-100 animate-pulse" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-3 bg-gray-100 rounded w-3/4 animate-pulse" />
+                      <div className="h-2 bg-gray-50 rounded w-1/2 animate-pulse" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <ActivityFeed items={history} />
+            )}
+          </div>
         </div>
-      )}
+      </div>
 
       {/* New Automation Modal */}
       <NewAutomationModal

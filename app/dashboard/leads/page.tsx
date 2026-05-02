@@ -5,14 +5,14 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { TriggerTypeBadge } from "@/components/triggers/TriggerTypeSelector";
 import { formatDateTime } from "@/lib/utils";
-import { 
-  Users, 
-  Download, 
-  Search, 
-  ExternalLink, 
-  X, 
-  TrendingUp, 
-  UserPlus, 
+import {
+  Users,
+  Download,
+  Search,
+  ExternalLink,
+  X,
+  TrendingUp,
+  UserPlus,
   MessageSquare,
   MoreVertical,
   Mail,
@@ -210,9 +210,9 @@ export default function LeadsPage() {
       {/* Lead Detail Slide-over */}
       {selectedLead && (
         <>
-          <div 
-            className="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-50 transition-opacity" 
-            onClick={() => setSelectedLead(null)} 
+          <div
+            className="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-50 transition-opacity"
+            onClick={() => setSelectedLead(null)}
           />
           <div className="fixed right-0 top-0 bottom-0 w-full max-w-lg bg-white dark:bg-[#121214] z-[60] shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
             {/* Drawer Header */}
@@ -228,8 +228,8 @@ export default function LeadsPage() {
                   </p>
                 </div>
               </div>
-              <button 
-                onClick={() => setSelectedLead(null)} 
+              <button
+                onClick={() => setSelectedLead(null)}
                 className="p-2.5 rounded-2xl bg-white dark:bg-[#1E1F23] border border-[#E5E7EB] dark:border-[#2C2D32] text-gray-400 hover:text-gray-600 transition-all shadow-sm active:scale-90"
               >
                 <X className="w-5 h-5" />
