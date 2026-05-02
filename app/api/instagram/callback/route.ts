@@ -66,7 +66,14 @@ export async function GET(request: NextRequest) {
       }
       userId = user.id;
 
-      // Save Instagram account
+      // Save Instagram account.
+      // We persist the *Page Access Token* (igData.pageAccessToken) because
+      // the Instagram Messaging API on graph.facebook.com requires it — a
+      // user access token returns "(#3) Application does not have the
+      // capability" even when the user-token has instagram_manage_messages.
+      // Page tokens for IG-connected pages don't expire, so we still set a
+      // long expiresAt for compatibility with the existing column.
+      const tokenToStore = igData.pageAccessToken || longLivedData.access_token;
       const expiresAt = new Date();
       expiresAt.setSeconds(expiresAt.getSeconds() + (longLivedData.expires_in || 5184000));
 
@@ -78,18 +85,18 @@ export async function GET(request: NextRequest) {
           igUsername: igData.igUsername,
           igProfilePic: igData.profilePic || null,
           followerCount: igData.followers || 0,
-          accessToken: longLivedData.access_token,
+          accessToken: tokenToStore,
           tokenExpiresAt: expiresAt,
         },
         update: {
-          accessToken: longLivedData.access_token,
+          accessToken: tokenToStore,
           tokenExpiresAt: expiresAt,
           igUsername: igData.igUsername,
           igProfilePic: igData.profilePic || null,
           followerCount: igData.followers || 0,
         },
       });
-      console.log("Step 5 ✅ IG account saved");
+      console.log("Step 5 ✅ IG account saved (using page access token:", !!igData.pageAccessToken, ")");
 
       const triggerCount = await db.trigger.count({
         where: { igAccount: { userId: user.id } },
