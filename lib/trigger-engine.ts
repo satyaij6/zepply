@@ -109,22 +109,25 @@ export async function processTriggerEvent(
     const trigger = matchedTrigger as unknown as TriggerWithAdvanced;
     console.log(`✅ Matched trigger: ${trigger.id}, reply: "${trigger.replyMessage}"`);
 
-    // 4. Follow-gate check (for comments only)
+    // 4. Follow-gate check (for comments only).
+    //
+    // NOTE: Meta restricts the IG /followers endpoint, so checkIfFollows
+    // effectively always returns false. A strict gate would block every
+    // user, including real followers. Until we have a working follower
+    // signal, log the attempt and fail open — the trigger still fires.
     if (trigger.followGate && event.type === "COMMENT") {
-      const follows = await checkIfFollows(
-        igAccount.igUserId,
-        event.senderIgUserId,
-        igAccount.accessToken
-      );
-      if (!follows) {
-        return {
-          matched: true,
-          triggerId: trigger.id,
-          replySent: false,
-          leadCaptured: false,
-          error: "Follow gate: user does not follow",
-        };
+      console.log(`🔒 Follow gate enabled for trigger ${trigger.id} — checking follower status`);
+      try {
+        const follows = await checkIfFollows(
+          igAccount.igUserId,
+          event.senderIgUserId,
+          igAccount.accessToken
+        );
+        console.log(`🔒 Follow gate result: follows=${follows} (Meta /followers is restricted; treating as pass)`);
+      } catch (gateErr) {
+        console.warn("🔒 Follow gate check threw:", gateErr);
       }
+      // Intentionally do not block — see note above.
     }
 
     // 5. Build reply message
