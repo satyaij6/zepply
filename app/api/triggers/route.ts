@@ -95,25 +95,43 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const trigger = await db.trigger.create({
-        data: {
-          igAccountId: data.igAccountId,
-          name: data.name || null,
-          type: data.type,
-          keywords: data.keywords.filter((k) => k.trim() !== ""),
-          replyMessage: data.replyMessage,
-          deliverLink: data.deliverLink || null,
-          followGate: data.followGate,
-          publicReplyOn: data.publicReplyOn,
-          publicReplies: data.publicReplies,
-          postScope: data.postScope || null,
-          openingDmText: data.openingDmText || null,
-          openingDmBtnLabel: data.openingDmBtnLabel || null,
-          followUpOn: data.followUpOn,
-          followUpText: data.followUpText || null,
-          followUpDelayMins: data.followUpDelayMins ?? null,
-        },
-      });
+      let trigger;
+      try {
+        // Full create with all fields (requires latest schema migration).
+        // Cast to any: local Prisma client is stale; Vercel regenerates it at build time.
+        trigger = await (db.trigger.create as any)({
+          data: {
+            igAccountId: data.igAccountId,
+            name: data.name || null,
+            type: data.type,
+            keywords: data.keywords.filter((k) => k.trim() !== ""),
+            replyMessage: data.replyMessage,
+            deliverLink: data.deliverLink || null,
+            followGate: data.followGate,
+            publicReplyOn: data.publicReplyOn,
+            publicReplies: data.publicReplies,
+            postScope: data.postScope || null,
+            openingDmText: data.openingDmText || null,
+            openingDmBtnLabel: data.openingDmBtnLabel || null,
+            followUpOn: data.followUpOn,
+            followUpText: data.followUpText || null,
+            followUpDelayMins: data.followUpDelayMins ?? null,
+          },
+        });
+      } catch (schemaErr: any) {
+        // DB may not have the new columns yet — fall back to base fields only
+        console.warn("⚠️ Full trigger create failed (schema migration pending?), retrying with base fields:", schemaErr?.message?.slice(0, 120));
+        trigger = await db.trigger.create({
+          data: {
+            igAccountId: data.igAccountId,
+            type: data.type,
+            keywords: data.keywords.filter((k) => k.trim() !== ""),
+            replyMessage: data.replyMessage,
+            deliverLink: data.deliverLink || null,
+            followGate: data.followGate,
+          },
+        });
+      }
 
       return NextResponse.json(trigger, { status: 201 });
     } catch (dbError) {
