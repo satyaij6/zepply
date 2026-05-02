@@ -161,6 +161,21 @@ async function processMessaging(event: any, igAccountId: string, igUserId: strin
     return;
   }
 
+  // Quick reply tap (e.g. "I'm following" on a follow-gate DM)
+  if (event.message?.quick_reply?.payload && event.sender) {
+    const triggerId = parseFollowConfirmPayload(event.message.quick_reply.payload);
+    if (triggerId) {
+      console.log(`📩 Quick reply FOLLOW_CONFIRM for trigger ${triggerId} from ${event.sender.id}`);
+      await handleFollowConfirm(
+        igUserId,
+        event.sender.id,
+        event.sender.username || "",
+        triggerId
+      );
+      return;
+    }
+  }
+
   // DM received
   if (event.message && event.sender) {
     await processTriggerEvent({

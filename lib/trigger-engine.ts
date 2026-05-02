@@ -1,7 +1,7 @@
 // Trigger engine — matches incoming Instagram events to user-defined triggers
 
 import prisma from "@/lib/prisma";
-import { sendDM, sendButtonDM, replyToComment, type DmButton } from "@/lib/instagram";
+import { sendDM, sendQuickReplyDM, replyToComment, type QuickReply } from "@/lib/instagram";
 import { sendLeadAlertEmail } from "@/lib/resend";
 import type { TriggerType } from "@prisma/client";
 
@@ -209,28 +209,24 @@ async function sendFollowGateMessage(
   }
 
   const text =
-    `Looks like you're not following yet 👀\n` +
-    `Follow me and tap "I'm following" — I'll send it right away`;
-  const buttons: DmButton[] = [
+    `Looks like you're not following yet 👀\n\n` +
+    `👉 instagram.com/${igAccount.igUsername}\n\n` +
+    `Follow me and tap "I'm following" — I'll send it right away!`;
+  const quickReplies: QuickReply[] = [
     {
-      type: "web_url",
-      url: `https://instagram.com/${igAccount.igUsername}`,
-      title: "Visit profile",
-    },
-    {
-      type: "postback",
-      title: "I'm following",
+      content_type: "text",
+      title: "I'm following ✅",
       payload: buildFollowConfirmPayload(trigger.id),
     },
   ];
 
   try {
     console.log(`📨 Sending follow-gate DM to ${event.senderIgUserId}...`);
-    await sendButtonDM(
+    await sendQuickReplyDM(
       igAccount.igUserId,
       event.senderIgUserId,
       text,
-      buttons,
+      quickReplies,
       igAccount.accessToken
     );
     console.log(`✅ Follow-gate DM sent (awaiting tap).`);
