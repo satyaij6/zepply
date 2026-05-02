@@ -187,10 +187,16 @@ export async function getIGUserProfile(igUserId: string, accessToken: string) {
 }
 
 // ─── Messaging ────────────────────────────────────────────
+//
+// Recipient can be either { id } (existing thread / 24h window) or
+// { comment_id } (Instagram Private Reply — allowed for 7 days after
+// the comment, and it opens a fresh conversation thread).
+
+export type DmRecipient = { id: string } | { comment_id: string };
 
 export async function sendDM(
   igUserId: string,
-  recipientId: string,
+  recipient: DmRecipient,
   message: string,
   accessToken: string
 ) {
@@ -201,7 +207,7 @@ export async function sendDM(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      recipient: { id: recipientId },
+      recipient,
       message: { text: message },
     }),
   });
@@ -246,7 +252,7 @@ export type QuickReply = { content_type: "text"; title: string; payload: string 
 
 export async function sendQuickReplyDM(
   igUserId: string,
-  recipientId: string,
+  recipient: DmRecipient,
   text: string,
   quickReplies: QuickReply[],
   accessToken: string
@@ -258,7 +264,7 @@ export async function sendQuickReplyDM(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      recipient: { id: recipientId },
+      recipient,
       message: { text, quick_replies: quickReplies },
     }),
   });

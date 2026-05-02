@@ -220,11 +220,18 @@ async function sendFollowGateMessage(
     },
   ];
 
+  // Comment-triggered DMs MUST use the Private Reply API (recipient.comment_id),
+  // because the user has not yet messaged us — sending to recipient.id would
+  // hit error #3 ("application does not have the capability").
+  const recipient = event.commentId
+    ? { comment_id: event.commentId }
+    : { id: event.senderIgUserId };
+
   try {
-    console.log(`📨 Sending follow-gate DM to ${event.senderIgUserId}...`);
+    console.log(`📨 Sending follow-gate DM via ${event.commentId ? "private-reply" : "thread"} to ${event.senderIgUserId}...`);
     await sendQuickReplyDM(
       igAccount.igUserId,
-      event.senderIgUserId,
+      recipient,
       text,
       quickReplies,
       igAccount.accessToken
@@ -264,6 +271,13 @@ async function executeReply(
   let replyText = trigger.replyMessage;
   if (trigger.deliverLink) replyText += `\n\n${trigger.deliverLink}`;
 
+  // Comment-triggered DMs use Private Reply (recipient.comment_id) so we can
+  // message users who have never DMed us. Postback / non-comment paths use
+  // recipient.id since the conversation is already open at that point.
+  const recipient = event.commentId
+    ? { comment_id: event.commentId }
+    : { id: event.senderIgUserId };
+
   let replySent = false;
   try {
     if (event.type === "COMMENT" && event.commentId) {
@@ -275,14 +289,10 @@ async function executeReply(
         await replyToComment(event.commentId, publicReplyText, igAccount.accessToken);
         console.log(`✅ Public comment reply sent.`);
       }
-      console.log(`📨 Sending DM to ${event.senderIgUserId}...`);
-      await sendDM(igAccount.igUserId, event.senderIgUserId, replyText, igAccount.accessToken);
-      console.log(`✅ DM sent successfully!`);
-    } else {
-      console.log(`📨 Sending DM to ${event.senderIgUserId}...`);
-      await sendDM(igAccount.igUserId, event.senderIgUserId, replyText, igAccount.accessToken);
-      console.log(`✅ DM sent successfully!`);
     }
+    console.log(`📨 Sending DM via ${event.commentId ? "private-reply" : "thread"} to ${event.senderIgUserId}...`);
+    await sendDM(igAccount.igUserId, recipient, replyText, igAccount.accessToken);
+    console.log(`✅ DM sent successfully!`);
     replySent = true;
   } catch (error) {
     console.error("Failed to send reply:", error);
