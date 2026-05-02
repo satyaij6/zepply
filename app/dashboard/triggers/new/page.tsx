@@ -5,13 +5,32 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 type TriggerType = "COMMENT" | "STORY_REPLY" | "DM_KEYWORD";
 
-const MOCK_POSTS = [
-  { id: 1, caption: "Morning routine that changed my life ✨", date: "Apr 22", likes: "2.3K", type: "Reel", grad: "linear-gradient(135deg,#667EEA,#764BA2)" },
-  { id: 2, caption: "Skincare routine GRWM 📸", date: "Apr 20", likes: "1.8K", type: "Post", grad: "linear-gradient(135deg,#F093FB,#F5576C)" },
-  { id: 3, caption: "Budget tips every creator needs", date: "Apr 19", likes: "987", type: "Reel", grad: "linear-gradient(135deg,#4FACFE,#00F2FE)" },
-  { id: 4, caption: "5-min makeup hack that works", date: "Apr 17", likes: "743", type: "Post", grad: "linear-gradient(135deg,#43E97B,#38F9D7)" },
-  { id: 5, caption: "Morning affirmations for creators", date: "Apr 15", likes: "621", type: "Carousel", grad: "linear-gradient(135deg,#FA709A,#FEE140)" },
-  { id: 6, caption: "What I eat in a day 🥗", date: "Apr 13", likes: "534", type: "Post", grad: "linear-gradient(135deg,#A18CD1,#FBC2EB)" },
+const GRADS = [
+  "linear-gradient(135deg,#667EEA,#764BA2)",
+  "linear-gradient(135deg,#F093FB,#F5576C)",
+  "linear-gradient(135deg,#4FACFE,#00F2FE)",
+  "linear-gradient(135deg,#43E97B,#38F9D7)",
+  "linear-gradient(135deg,#FA709A,#FEE140)",
+  "linear-gradient(135deg,#A18CD1,#FBC2EB)",
+];
+
+type IGPost = {
+  id: string | number;
+  caption: string;
+  date: string;
+  likes: string;
+  type: "Reel" | "Post" | "Carousel";
+  grad: string;
+  thumbnailUrl?: string | null;
+};
+
+const MOCK_POSTS: IGPost[] = [
+  { id: 1, caption: "Morning routine that changed my life ✨", date: "Apr 22", likes: "2.3K", type: "Reel", grad: GRADS[0] },
+  { id: 2, caption: "Skincare routine GRWM 📸", date: "Apr 20", likes: "1.8K", type: "Post", grad: GRADS[1] },
+  { id: 3, caption: "Budget tips every creator needs", date: "Apr 19", likes: "987", type: "Reel", grad: GRADS[2] },
+  { id: 4, caption: "5-min makeup hack that works", date: "Apr 17", likes: "743", type: "Post", grad: GRADS[3] },
+  { id: 5, caption: "Morning affirmations for creators", date: "Apr 15", likes: "621", type: "Carousel", grad: GRADS[4] },
+  { id: 6, caption: "What I eat in a day 🥗", date: "Apr 13", likes: "534", type: "Post", grad: GRADS[5] },
 ];
 
 const SUGGESTIONS = ["link", "price", "info", "guide", "yes", "join", "drop", "free"];
@@ -51,10 +70,12 @@ function FlowBuilderInner() {
 
   // Step 1 (COMMENT only)
   const [postType, setPostType] = useState<"specific" | "next" | "any">("specific");
-  const [selectedPost, setSelectedPost] = useState<number | null>(null);
+  const [selectedPost, setSelectedPost] = useState<string | number | null>(null);
   const [postFilter, setPostFilter] = useState("All");
   const [postSearch, setPostSearch] = useState("");
   const [showPostsModal, setShowPostsModal] = useState(false);
+  const [realPosts, setRealPosts] = useState<IGPost[]>([]);
+  const [postsLoading, setPostsLoading] = useState(false);
 
   // Keywords
   const [keywords, setKeywords] = useState<string[]>([]);
@@ -113,6 +134,29 @@ function FlowBuilderInner() {
     }
   }, [keywords, anyKeyword, dmText, openingDmText, openingDmOn, leadText, leadOn, askFollowText, askFollowOn, followUpText, followUpOn, currentStep]);
 
+  useEffect(() => {
+    if (!hasMediaStep) return;
+    setPostsLoading(true);
+    fetch("/api/instagram/media")
+      .then((r) => r.json())
+      .then((json) => {
+        if (json.data?.length) {
+          const mapped: IGPost[] = json.data.map((p: any, i: number) => ({
+            id: p.id,
+            caption: p.caption || "Untitled post",
+            date: new Date(p.timestamp).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+            likes: "—",
+            type: p.mediaType === "VIDEO" ? "Reel" : p.mediaType === "CAROUSEL_ALBUM" ? "Carousel" : "Post",
+            grad: GRADS[i % GRADS.length],
+            thumbnailUrl: p.thumbnailUrl || null,
+          }));
+          setRealPosts(mapped);
+        }
+      })
+      .catch(() => { /* fall back to MOCK_POSTS */ })
+      .finally(() => setPostsLoading(false));
+  }, [hasMediaStep]);
+
   const totalSteps = stepLabels.length;
 
   const goToStep = (n: number) => {
@@ -128,7 +172,8 @@ function FlowBuilderInner() {
     }, 50);
   };
 
-  const filteredPosts = MOCK_POSTS.filter((p) => {
+  const allPosts = realPosts.length > 0 ? realPosts : MOCK_POSTS;
+  const filteredPosts = allPosts.filter((p) => {
     const matchFilter = postFilter === "All" || p.type === postFilter;
     const matchSearch = !postSearch || p.caption.toLowerCase().includes(postSearch.toLowerCase());
     return matchFilter && matchSearch;
@@ -186,17 +231,26 @@ function FlowBuilderInner() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          igAccountId,
+          name: autoName,
           type: triggerType,
           keywords: anyKeyword ? [] : keywords,
           replyMessage: dmText,
           deliverLink: linkUrl || null,
-          followGate: false,
-          igAccountId,
+          followGate: askFollowOn,
+          publicReplyOn,
+          publicReplies: publicReplyOn ? publicReplies : [],
+          postScope: hasMediaStep ? postType : undefined,
+          selectedPostId: hasMediaStep && postType === "specific" ? String(selectedPost ?? "") : null,
+          openingDmText: openingDmOn ? openingDmText : null,
+          openingDmBtnLabel: openingDmOn ? openingDmBtnLabel : null,
+          followUpOn,
+          followUpText: followUpOn ? followUpText : null,
+          followUpDelayMins: followUpOn ? followUpHours * 60 + followUpMinutes : null,
         }),
       });
       setShowSuccess(true);
     } catch {
-      // still show success UI optimistically
       setShowSuccess(true);
     } finally {
       setActivating(false);
@@ -416,18 +470,22 @@ function FlowBuilderInner() {
 
                   {/* 3-column portrait grid */}
                   <div className="grid grid-cols-3 gap-2 mt-3">
-                    {filteredPosts.slice(0, 3).map((p) => (
+                    {postsLoading ? (
+                      [0,1,2].map((i) => (
+                        <div key={i} className="rounded-xl overflow-hidden" style={{ aspectRatio: '3/4', background: '#E5E7EB', animation: 'pulse 1.5s ease-in-out infinite' }} />
+                      ))
+                    ) : filteredPosts.slice(0, 3).map((p) => (
                       <div
                         key={p.id}
                         onClick={() => setSelectedPost(p.id)}
                         className="cursor-pointer rounded-xl overflow-hidden transition-all"
-                        style={{
-                          border: `2px solid ${selectedPost === p.id ? '#2564FF' : '#D9D9D9'}`,
-                        }}
+                        style={{ border: `2px solid ${selectedPost === p.id ? '#2564FF' : '#D9D9D9'}` }}
                       >
-                        <div
-                          style={{ aspectRatio: '3/4', background: '#D9D9D9' }}
-                        />
+                        {p.thumbnailUrl ? (
+                          <img src={p.thumbnailUrl} alt={p.caption} style={{ aspectRatio: '3/4', width: '100%', objectFit: 'cover', display: 'block' }} />
+                        ) : (
+                          <div style={{ aspectRatio: '3/4', background: p.grad }} />
+                        )}
                       </div>
                     ))}
                   </div>
@@ -1446,15 +1504,7 @@ function FlowBuilderInner() {
 
             <div className="p-6 overflow-y-auto bg-[#F9FAFB] flex-1">
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                {[
-                  ...MOCK_POSTS,
-                  { id: 7, caption: "3 tools I use daily for automation", date: "Apr 10", likes: "1.2K", type: "Carousel", grad: "linear-gradient(135deg,#FF0844,#FFB199)" },
-                  { id: 8, caption: "Why engagement is dropping 📉", date: "Apr 8", likes: "4.5K", type: "Reel", grad: "linear-gradient(135deg,#B3FFAB,#12FFF7)" },
-                  { id: 9, caption: "Hooks that hook your audience", date: "Apr 5", likes: "892", type: "Post", grad: "linear-gradient(135deg,#16A085,#F4D03F)" },
-                  { id: 10, caption: "A day in the life of a creator", date: "Apr 2", likes: "3.1K", type: "Reel", grad: "linear-gradient(135deg,#D4FC79,#96E6A1)" },
-                  { id: 11, caption: "My editing workflow revealed", date: "Mar 30", likes: "2.1K", type: "Post", grad: "linear-gradient(135deg,#84FAB0,#8FD3F4)" },
-                  { id: 12, caption: "Stop doing this on IG 🛑", date: "Mar 28", likes: "5.6K", type: "Reel", grad: "linear-gradient(135deg,#FCCB90,#D57EEB)" },
-                ].filter(p => isStoryReply || postFilter === "All" || p.type + "s" === postFilter || p.type === postFilter).map((post) => (
+                {allPosts.filter(p => isStoryReply || postFilter === "All" || p.type + "s" === postFilter || p.type === postFilter).map((post) => (
                   <div
                     key={post.id}
                     onClick={() => {
@@ -1463,7 +1513,12 @@ function FlowBuilderInner() {
                     }}
                     className={`relative cursor-pointer rounded-xl overflow-hidden border-2 transition-all group bg-white shadow-sm hover:shadow-md ${selectedPost === post.id ? 'border-[#2564FF]' : 'border-transparent hover:border-[#D1D5DB]'}`}
                   >
-                    <div style={{ aspectRatio: '3/4', background: post.grad }} className="w-full relative">
+                    <div style={{ aspectRatio: '3/4' }} className="w-full relative overflow-hidden">
+                      {post.thumbnailUrl ? (
+                        <img src={post.thumbnailUrl} alt={post.caption} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full" style={{ background: post.grad }} />
+                      )}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                     </div>
                     <div className="p-2.5">

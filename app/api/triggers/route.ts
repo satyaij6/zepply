@@ -5,13 +5,21 @@ import { z } from "zod";
 
 const createTriggerSchema = z.object({
   igAccountId: z.string(),
+  name: z.string().optional(),
   type: z.enum(["COMMENT", "DM_KEYWORD", "STORY_REPLY", "NEW_FOLLOWER"]),
   keywords: z.array(z.string()).default([]),
-  replyMessage: z.string().min(1).max(500),
+  replyMessage: z.string().min(1).max(1000),
   deliverLink: z.string().url().optional().or(z.literal("")),
   followGate: z.boolean().default(false),
+  publicReplyOn: z.boolean().default(false),
+  publicReplies: z.array(z.string()).default([]),
   postScope: z.enum(["specific", "next", "any"]).optional(),
   selectedPostId: z.string().nullable().optional(),
+  openingDmText: z.string().optional(),
+  openingDmBtnLabel: z.string().optional(),
+  followUpOn: z.boolean().default(false),
+  followUpText: z.string().optional(),
+  followUpDelayMins: z.number().int().min(0).optional(),
 });
 
 // Shared in-memory store for local dev (when DB is unreachable)
@@ -90,11 +98,20 @@ export async function POST(request: NextRequest) {
       const trigger = await db.trigger.create({
         data: {
           igAccountId: data.igAccountId,
+          name: data.name || null,
           type: data.type,
           keywords: data.keywords.filter((k) => k.trim() !== ""),
           replyMessage: data.replyMessage,
           deliverLink: data.deliverLink || null,
           followGate: data.followGate,
+          publicReplyOn: data.publicReplyOn,
+          publicReplies: data.publicReplies,
+          postScope: data.postScope || null,
+          openingDmText: data.openingDmText || null,
+          openingDmBtnLabel: data.openingDmBtnLabel || null,
+          followUpOn: data.followUpOn,
+          followUpText: data.followUpText || null,
+          followUpDelayMins: data.followUpDelayMins ?? null,
         },
       });
 

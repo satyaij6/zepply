@@ -35,19 +35,28 @@ model InstagramAccount {
 }
 
 model Trigger {
-  id            String           @id @default(cuid())
-  igAccountId   String
-  igAccount     InstagramAccount @relation(fields: [igAccountId], references: [id], onDelete: Cascade)
-  type          TriggerType
-  keywords      String[]
-  replyMessage  String
-  deliverLink   String?
-  followGate    Boolean          @default(false)
-  isActive      Boolean          @default(true)
-  hitCount      Int              @default(0)
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
-  leads         Lead[]
+  id                String           @id @default(cuid())
+  igAccountId       String
+  igAccount         InstagramAccount @relation(fields: [igAccountId], references: [id], onDelete: Cascade)
+  name              String?
+  type              TriggerType
+  keywords          String[]
+  replyMessage      String
+  deliverLink       String?
+  followGate        Boolean          @default(false)
+  publicReplyOn     Boolean          @default(false)
+  publicReplies     String[]
+  postScope         String?
+  openingDmText     String?
+  openingDmBtnLabel String?
+  followUpOn        Boolean          @default(false)
+  followUpText      String?
+  followUpDelayMins Int?
+  isActive          Boolean          @default(true)
+  hitCount          Int              @default(0)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  leads             Lead[]
 }
 
 model Lead {
