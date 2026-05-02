@@ -238,6 +238,45 @@ export async function replyToComment(
   return res.json();
 }
 
+// ─── Button-template DM (used by the follow-gate flow) ───
+
+export type DmButton =
+  | { type: "web_url"; url: string; title: string }
+  | { type: "postback"; title: string; payload: string };
+
+export async function sendButtonDM(
+  igUserId: string,
+  recipientId: string,
+  text: string,
+  buttons: DmButton[],
+  accessToken: string
+) {
+  const url = new URL(`${GRAPH_API_FB}/${igUserId}/messages`);
+  url.searchParams.set("access_token", accessToken);
+
+  const res = await fetch(url.toString(), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      recipient: { id: recipientId },
+      message: {
+        attachment: {
+          type: "template",
+          payload: { template_type: "button", text, buttons },
+        },
+      },
+    }),
+  });
+
+  if (!res.ok) {
+    const error = await res.json();
+    console.error("Button DM send failed:", error);
+    throw new Error(`Failed to send button DM: ${JSON.stringify(error)}`);
+  }
+
+  return res.json();
+}
+
 // ─── Follow Check ─────────────────────────────────────────
 
 export async function checkIfFollows(

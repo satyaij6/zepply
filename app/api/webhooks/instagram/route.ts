@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyWebhookSignature } from "@/lib/instagram";
-import { processTriggerEvent, findIgAccountByIgUserId } from "@/lib/trigger-engine";
+import {
+  processTriggerEvent,
+  findIgAccountByIgUserId,
+  handleFollowConfirm,
+  parseFollowConfirmPayload,
+} from "@/lib/trigger-engine";
 
 // GET — Meta webhook verification
 export async function GET(request: NextRequest) {
@@ -81,7 +86,7 @@ async function processWebhookEvents(data: any) {
     if (entry.messaging) {
       console.log(`💬 Processing ${entry.messaging.length} messaging events`);
       for (const messagingEvent of entry.messaging) {
-        await processMessaging(messagingEvent, igAccount.id);
+        await processMessaging(messagingEvent, igAccount.id, igUserId);
       }
     }
   }
@@ -138,7 +143,24 @@ async function processChange(change: any, igAccountId: string, igUserId: string)
   }
 }
 
-async function processMessaging(event: any, igAccountId: string) {
+async function processMessaging(event: any, igAccountId: string, igUserId: string) {
+  // Postback (e.g. "I'm following" tap on a follow-gate DM)
+  if (event.postback?.payload && event.sender) {
+    const triggerId = parseFollowConfirmPayload(event.postback.payload);
+    if (triggerId) {
+      console.log(`📩 Postback FOLLOW_CONFIRM for trigger ${triggerId} from ${event.sender.id}`);
+      await handleFollowConfirm(
+        igUserId,
+        event.sender.id,
+        event.sender.username || "",
+        triggerId
+      );
+      return;
+    }
+    console.log(`📩 Postback with unknown payload, ignoring: ${event.postback.payload}`);
+    return;
+  }
+
   // DM received
   if (event.message && event.sender) {
     await processTriggerEvent({

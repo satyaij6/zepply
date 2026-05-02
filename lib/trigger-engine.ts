@@ -1,9 +1,11 @@
 // Trigger engine — matches incoming Instagram events to user-defined triggers
 
 import prisma from "@/lib/prisma";
-import { sendDM, replyToComment, checkIfFollows } from "@/lib/instagram";
+import { sendDM, sendButtonDM, replyToComment, type DmButton } from "@/lib/instagram";
 import { sendLeadAlertEmail } from "@/lib/resend";
 import type { TriggerType } from "@prisma/client";
+
+// ─── Types ────────────────────────────────────────────────
 
 interface IncomingEvent {
   type: "COMMENT" | "DM_KEYWORD" | "STORY_REPLY" | "NEW_FOLLOWER";
@@ -29,6 +31,14 @@ interface TriggerWithAdvanced {
   [key: string]: unknown;
 }
 
+interface IgAccountForReply {
+  id: string;
+  igUserId: string;
+  igUsername: string;
+  accessToken: string;
+  user: { email: string | null };
+}
+
 interface TriggerResult {
   matched: boolean;
   triggerId?: string;
@@ -37,12 +47,30 @@ interface TriggerResult {
   error?: string;
 }
 
+// ─── Postback payload encoding ───────────────────────────
+//
+// We encode the trigger id directly in the postback payload so the
+// "I'm following" tap can resolve back to the originating automation
+// without any extra DB lookup (and without persisting per-user pending
+// state).
+const FOLLOW_CONFIRM_PREFIX = "FOLLOW_CONFIRM:";
+
+export function buildFollowConfirmPayload(triggerId: string): string {
+  return `${FOLLOW_CONFIRM_PREFIX}${triggerId}`;
+}
+
+export function parseFollowConfirmPayload(payload: string): string | null {
+  if (!payload?.startsWith(FOLLOW_CONFIRM_PREFIX)) return null;
+  return payload.slice(FOLLOW_CONFIRM_PREFIX.length) || null;
+}
+
+// ─── Main entry — keyword-matched events (comment/DM/story/follow) ───
+
 export async function processTriggerEvent(
   event: IncomingEvent
 ): Promise<TriggerResult> {
   console.log(`⚡ processTriggerEvent type=${event.type} text="${event.text}" sender=${event.senderUsername}`);
   try {
-    // 1. Find the Instagram account
     const igAccount = await prisma.instagramAccount.findUnique({
       where: { id: event.igAccountId },
       include: { user: true },
@@ -54,7 +82,6 @@ export async function processTriggerEvent(
     }
     console.log(`✅ Account active: ${igAccount.igUsername}`);
 
-    // 2. Find matching active triggers
     const triggers = await prisma.trigger.findMany({
       where: {
         igAccountId: event.igAccountId,
@@ -69,31 +96,20 @@ export async function processTriggerEvent(
       return { matched: false, replySent: false, leadCaptured: false };
     }
 
-    // 3. Match keywords
     let matchedTrigger = null;
-
     for (const trigger of triggers) {
-      if (
-        trigger.type === "NEW_FOLLOWER" ||
-        trigger.type === "STORY_REPLY"
-      ) {
-        // These match without keywords
+      if (trigger.type === "NEW_FOLLOWER" || trigger.type === "STORY_REPLY") {
         matchedTrigger = trigger;
         break;
       }
-
       if (trigger.keywords.length === 0) {
-        // Trigger with no keywords matches everything
         matchedTrigger = trigger;
         break;
       }
-
-      // Check if any keyword matches (case-insensitive)
       const text = (event.text || "").toLowerCase();
       const keywordMatch = trigger.keywords.some((kw) =>
         text.includes(kw.toLowerCase())
       );
-
       console.log(`🔍 Checking keywords [${trigger.keywords.join(",")}] against "${event.text}" → match=${keywordMatch}`);
       if (keywordMatch) {
         matchedTrigger = trigger;
@@ -105,134 +121,18 @@ export async function processTriggerEvent(
       console.warn(`❌ No keyword match for text: "${event.text}"`);
       return { matched: false, replySent: false, leadCaptured: false };
     }
-    // Cast to extended type — new fields exist after the schema migration runs
+
     const trigger = matchedTrigger as unknown as TriggerWithAdvanced;
     console.log(`✅ Matched trigger: ${trigger.id}, reply: "${trigger.replyMessage}"`);
 
-    // 4. Follow-gate check (for comments only).
-    //
-    // NOTE: Meta restricts the IG /followers endpoint, so checkIfFollows
-    // effectively always returns false. A strict gate would block every
-    // user, including real followers. Until we have a working follower
-    // signal, log the attempt and fail open — the trigger still fires.
+    // Follow-gate: send an interactive "follow + confirm" DM instead of
+    // the actual content. The user must tap "I'm following" before they
+    // get the link. Only applies to comment-originated triggers.
     if (trigger.followGate && event.type === "COMMENT") {
-      console.log(`🔒 Follow gate enabled for trigger ${trigger.id} — checking follower status`);
-      try {
-        const follows = await checkIfFollows(
-          igAccount.igUserId,
-          event.senderIgUserId,
-          igAccount.accessToken
-        );
-        console.log(`🔒 Follow gate result: follows=${follows} (Meta /followers is restricted; treating as pass)`);
-      } catch (gateErr) {
-        console.warn("🔒 Follow gate check threw:", gateErr);
-      }
-      // Intentionally do not block — see note above.
+      return sendFollowGateMessage(trigger, igAccount, event);
     }
 
-    // 5. Build reply message
-    let replyText = trigger.replyMessage;
-    if (trigger.deliverLink) {
-      replyText += `\n\n${trigger.deliverLink}`;
-    }
-
-    // 6. Send reply
-    let replySent = false;
-    try {
-      if (event.type === "COMMENT" && event.commentId) {
-        // Public comment reply — use the curated publicReplies list (random pick),
-        // not the DM message (which is private)
-        if (trigger.publicReplyOn && trigger.publicReplies.length > 0) {
-          const publicReplyText = trigger.publicReplies[
-            Math.floor(Math.random() * trigger.publicReplies.length)
-          ];
-          console.log(`💬 Replying publicly to comment ${event.commentId}: "${publicReplyText}"`);
-          await replyToComment(event.commentId, publicReplyText, igAccount.accessToken);
-          console.log(`✅ Public comment reply sent.`);
-        }
-        // Send private DM
-        console.log(`📨 Sending DM to ${event.senderIgUserId}...`);
-        await sendDM(igAccount.igUserId, event.senderIgUserId, replyText, igAccount.accessToken);
-        console.log(`✅ DM sent successfully!`);
-      } else {
-        // DM_KEYWORD, STORY_REPLY, NEW_FOLLOWER — DM only
-        await sendDM(igAccount.igUserId, event.senderIgUserId, replyText, igAccount.accessToken);
-      }
-      replySent = true;
-    } catch (error) {
-      console.error("Failed to send reply:", error);
-      return {
-        matched: true,
-        triggerId: trigger.id,
-        replySent: false,
-        leadCaptured: false,
-        error: `Reply failed: ${error}`,
-      };
-    }
-
-    // 7. Capture lead
-    await prisma.lead.create({
-      data: {
-        igAccountId: event.igAccountId,
-        triggerId: trigger.id,
-        igUserId: event.senderIgUserId,
-        igUsername: event.senderUsername,
-      },
-    });
-
-    // Send lead alert email if user has an email on file
-    if (igAccount.user.email) {
-      const keyword = trigger.keywords[0] || event.type;
-      sendLeadAlertEmail(igAccount.user.email, event.senderUsername, keyword).catch(
-        (err) => console.error("Lead alert email failed:", err)
-      );
-    }
-
-    // 8. Update trigger hit count
-    await prisma.trigger.update({
-      where: { id: trigger.id },
-      data: { hitCount: { increment: 1 } },
-    });
-
-    // 9. Log analytics
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today.getTime() + 86400000);
-
-    const existingAnalytics = await prisma.analytics.findFirst({
-      where: {
-        igAccountId: event.igAccountId,
-        date: { gte: today, lt: tomorrow },
-      },
-    });
-
-    if (existingAnalytics) {
-      await prisma.analytics.update({
-        where: { id: existingAnalytics.id },
-        data: {
-          triggersHit: { increment: 1 },
-          leadsCaptured: { increment: 1 },
-          dmsSent: replySent ? { increment: 1 } : undefined,
-        },
-      });
-    } else {
-      await prisma.analytics.create({
-        data: {
-          igAccountId: event.igAccountId,
-          date: today,
-          triggersHit: 1,
-          leadsCaptured: 1,
-          dmsSent: replySent ? 1 : 0,
-        },
-      });
-    }
-
-    return {
-      matched: true,
-      triggerId: trigger.id,
-      replySent: true,
-      leadCaptured: true,
-    };
+    return executeReply(trigger, igAccount, event);
   } catch (error) {
     console.error("Trigger engine error:", error);
     return {
@@ -241,6 +141,223 @@ export async function processTriggerEvent(
       leadCaptured: false,
       error: `Engine error: ${error}`,
     };
+  }
+}
+
+// ─── Postback entry — "I'm following" tap on the gate DM ────
+
+export async function handleFollowConfirm(
+  igUserId: string,
+  senderIgUserId: string,
+  senderUsername: string,
+  triggerId: string
+): Promise<TriggerResult> {
+  console.log(`✅ Follow-confirm postback for trigger ${triggerId} from ${senderUsername || senderIgUserId}`);
+
+  const igAccount = await prisma.instagramAccount.findUnique({
+    where: { igUserId },
+    include: { user: true },
+  });
+  if (!igAccount) {
+    console.warn(`❌ Follow-confirm: no IG account for ${igUserId}`);
+    return { matched: false, replySent: false, leadCaptured: false };
+  }
+
+  const trigger = await prisma.trigger.findFirst({
+    where: { id: triggerId, igAccountId: igAccount.id, isActive: true },
+  });
+  if (!trigger) {
+    console.warn(`❌ Follow-confirm: trigger ${triggerId} not found or inactive`);
+    return { matched: false, replySent: false, leadCaptured: false };
+  }
+
+  return executeReply(
+    trigger as unknown as TriggerWithAdvanced,
+    igAccount,
+    {
+      type: "COMMENT",
+      igAccountId: igAccount.id,
+      senderIgUserId,
+      senderUsername: senderUsername || senderIgUserId,
+      // No commentId — postback path never re-replies publicly.
+    }
+  );
+}
+
+// ─── Helpers ──────────────────────────────────────────────
+
+async function sendFollowGateMessage(
+  trigger: TriggerWithAdvanced,
+  igAccount: IgAccountForReply,
+  event: IncomingEvent
+): Promise<TriggerResult> {
+  console.log(`🔒 Follow gate active — sending interactive request to ${event.senderUsername}`);
+
+  // Public comment reply still goes out (e.g. "Check your DMs!") — same
+  // as the non-gated flow, so the commenter knows to look in DMs.
+  if (event.commentId && trigger.publicReplyOn && trigger.publicReplies.length > 0) {
+    try {
+      const publicReplyText = trigger.publicReplies[
+        Math.floor(Math.random() * trigger.publicReplies.length)
+      ];
+      console.log(`💬 Replying publicly to comment ${event.commentId}: "${publicReplyText}"`);
+      await replyToComment(event.commentId, publicReplyText, igAccount.accessToken);
+      console.log(`✅ Public comment reply sent (gate flow).`);
+    } catch (err) {
+      console.error("Public reply failed in gate flow:", err);
+    }
+  }
+
+  const text =
+    `Looks like you're not following yet 👀\n` +
+    `Follow me and tap "I'm following" — I'll send it right away`;
+  const buttons: DmButton[] = [
+    {
+      type: "web_url",
+      url: `https://instagram.com/${igAccount.igUsername}`,
+      title: "Visit profile",
+    },
+    {
+      type: "postback",
+      title: "I'm following",
+      payload: buildFollowConfirmPayload(trigger.id),
+    },
+  ];
+
+  try {
+    console.log(`📨 Sending follow-gate DM to ${event.senderIgUserId}...`);
+    await sendButtonDM(
+      igAccount.igUserId,
+      event.senderIgUserId,
+      text,
+      buttons,
+      igAccount.accessToken
+    );
+    console.log(`✅ Follow-gate DM sent (awaiting tap).`);
+  } catch (err) {
+    console.error("Follow-gate DM failed:", err);
+    return {
+      matched: true,
+      triggerId: trigger.id,
+      replySent: false,
+      leadCaptured: false,
+      error: `Gate DM failed: ${err}`,
+    };
+  }
+
+  // Count the trigger fire, but defer lead capture until the user
+  // actually taps "I'm following".
+  await prisma.trigger.update({
+    where: { id: trigger.id },
+    data: { hitCount: { increment: 1 } },
+  });
+
+  return {
+    matched: true,
+    triggerId: trigger.id,
+    replySent: true,
+    leadCaptured: false,
+  };
+}
+
+async function executeReply(
+  trigger: TriggerWithAdvanced,
+  igAccount: IgAccountForReply,
+  event: IncomingEvent
+): Promise<TriggerResult> {
+  let replyText = trigger.replyMessage;
+  if (trigger.deliverLink) replyText += `\n\n${trigger.deliverLink}`;
+
+  let replySent = false;
+  try {
+    if (event.type === "COMMENT" && event.commentId) {
+      if (trigger.publicReplyOn && trigger.publicReplies.length > 0) {
+        const publicReplyText = trigger.publicReplies[
+          Math.floor(Math.random() * trigger.publicReplies.length)
+        ];
+        console.log(`💬 Replying publicly to comment ${event.commentId}: "${publicReplyText}"`);
+        await replyToComment(event.commentId, publicReplyText, igAccount.accessToken);
+        console.log(`✅ Public comment reply sent.`);
+      }
+      console.log(`📨 Sending DM to ${event.senderIgUserId}...`);
+      await sendDM(igAccount.igUserId, event.senderIgUserId, replyText, igAccount.accessToken);
+      console.log(`✅ DM sent successfully!`);
+    } else {
+      console.log(`📨 Sending DM to ${event.senderIgUserId}...`);
+      await sendDM(igAccount.igUserId, event.senderIgUserId, replyText, igAccount.accessToken);
+      console.log(`✅ DM sent successfully!`);
+    }
+    replySent = true;
+  } catch (error) {
+    console.error("Failed to send reply:", error);
+    return {
+      matched: true,
+      triggerId: trigger.id,
+      replySent: false,
+      leadCaptured: false,
+      error: `Reply failed: ${error}`,
+    };
+  }
+
+  await prisma.lead.create({
+    data: {
+      igAccountId: igAccount.id,
+      triggerId: trigger.id,
+      igUserId: event.senderIgUserId,
+      igUsername: event.senderUsername,
+    },
+  });
+
+  if (igAccount.user.email) {
+    const keyword = trigger.keywords[0] || event.type;
+    sendLeadAlertEmail(igAccount.user.email, event.senderUsername, keyword).catch(
+      (err) => console.error("Lead alert email failed:", err)
+    );
+  }
+
+  await prisma.trigger.update({
+    where: { id: trigger.id },
+    data: { hitCount: { increment: 1 } },
+  });
+
+  await bumpDailyAnalytics(igAccount.id, replySent);
+
+  return {
+    matched: true,
+    triggerId: trigger.id,
+    replySent: true,
+    leadCaptured: true,
+  };
+}
+
+async function bumpDailyAnalytics(igAccountId: string, dmSent: boolean) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today.getTime() + 86400000);
+
+  const existing = await prisma.analytics.findFirst({
+    where: { igAccountId, date: { gte: today, lt: tomorrow } },
+  });
+
+  if (existing) {
+    await prisma.analytics.update({
+      where: { id: existing.id },
+      data: {
+        triggersHit: { increment: 1 },
+        leadsCaptured: { increment: 1 },
+        dmsSent: dmSent ? { increment: 1 } : undefined,
+      },
+    });
+  } else {
+    await prisma.analytics.create({
+      data: {
+        igAccountId,
+        date: today,
+        triggersHit: 1,
+        leadsCaptured: 1,
+        dmsSent: dmSent ? 1 : 0,
+      },
+    });
   }
 }
 
