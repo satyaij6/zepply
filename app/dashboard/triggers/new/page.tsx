@@ -1081,7 +1081,9 @@ function FlowBuilderInner() {
                   <div className="w-1/2 h-full flex flex-col bg-[#000000] text-white relative overflow-hidden">
                     {isStoryReply ? (
                       // ── STORY UI ──
-                      <div className="absolute inset-0 w-full h-full flex flex-col" style={{ background: allPosts.find(p => p.id === selectedPost)?.grad || 'linear-gradient(135deg, #1E1F23, #2C2D32)' }}>
+                      <div className="absolute inset-0 w-full h-full flex flex-col" style={{
+                        background: (() => { const p = allPosts.find(x => x.id === selectedPost); return p?.thumbnailUrl ? `url(${p.thumbnailUrl}) center/cover no-repeat` : (p?.grad || 'linear-gradient(135deg, #1E1F23, #2C2D32)'); })()
+                      }}>
                         {/* Safe area spacer */}
                         <div className="h-10 w-full" />
 
@@ -1133,13 +1135,14 @@ function FlowBuilderInner() {
                           </div>
 
                           {/* Post Image */}
-                          <div
-                            className="w-full"
-                            style={{
-                              aspectRatio: '4/5',
-                              background: allPosts.find(p => p.id === selectedPost)?.grad || 'linear-gradient(135deg, #1E1F23, #2C2D32)'
-                            }}
-                          />
+                          {(() => {
+                            const post = allPosts.find(p => p.id === selectedPost);
+                            return post?.thumbnailUrl ? (
+                              <img src={post.thumbnailUrl} alt={post.caption} className="w-full" style={{ aspectRatio: '4/5', objectFit: 'cover', display: 'block' }} />
+                            ) : (
+                              <div className="w-full" style={{ aspectRatio: '4/5', background: post?.grad || 'linear-gradient(135deg, #1E1F23, #2C2D32)' }} />
+                            );
+                          })()}
 
                           {/* Action Bar */}
                           <div className="px-3 py-3">
@@ -1263,12 +1266,14 @@ function FlowBuilderInner() {
                         triggerType === "STORY_REPLY" ? (
                           <div className="flex flex-col items-end gap-1 flex-shrink-0">
                             <p className="text-[11px] text-[#8A8A8A] pr-1 mb-0.5">You replied to their story</p>
-                            <div
-                              className="w-[85px] h-[140px] rounded-[14px] overflow-hidden border border-[#2C2D32]"
-                              style={{
-                                background: allPosts.find(p => p.id === selectedPost)?.grad || 'linear-gradient(135deg, #2A2A35, #1E1F23)'
-                              }}
-                            />
+                            {(() => {
+                              const post = allPosts.find(p => p.id === selectedPost);
+                              return post?.thumbnailUrl ? (
+                                <img src={post.thumbnailUrl} alt="" className="w-[85px] h-[140px] rounded-[14px] overflow-hidden border border-[#2C2D32] object-cover" />
+                              ) : (
+                                <div className="w-[85px] h-[140px] rounded-[14px] overflow-hidden border border-[#2C2D32]" style={{ background: post?.grad || 'linear-gradient(135deg, #2A2A35, #1E1F23)' }} />
+                              );
+                            })()}
                             <div className="bg-[#7D24CE] rounded-[18px_18px_4px_18px] px-3.5 py-2 text-[13px] text-white max-w-[70%] leading-[1.4] mt-1 break-all">
                               {anyKeyword ? "Replied to story ✨" : keywords[0]}
                             </div>
