@@ -101,7 +101,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 5. Set user data cookie (fallback for when DB is unreachable)
-    const redirectUrl = isNewUser ? "/onboarding" : "/dashboard";
+    const redirectUrl = isNewUser ? "/connected" : "/dashboard";
 
     const params = new URLSearchParams({
       userId: userId,

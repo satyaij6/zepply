@@ -3,14 +3,6 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 
-interface HeroProps {
-  email: string;
-  setEmail: (v: string) => void;
-  onJoin: (email?: string) => void;
-  submitted: boolean;
-  loading: boolean;
-}
-
 const BUBBLES = [
   { id: 1, type: "bot", src: "/chat-bubble-1.png", alt: "Here's your 30-day home workout plan", width: 240, height: 110, mr: 0 },
   { id: 2, type: "user", src: "/user-bubble-1.png", alt: "Looks good. Do you have more plans?", width: 240, height: 80, mr: 140 },
@@ -20,8 +12,7 @@ const BUBBLES = [
   { id: 6, type: "user", src: "/user-bubble-3.png", alt: "I need this plan!", width: 240, height: 60, mr: 140 },
 ];
 
-export default function HeroSection({ onJoin, submitted, loading }: HeroProps) {
-  const [localEmail, setLocalEmail] = useState("");
+export default function HeroSection() {
 
   // Chat animation state
   const [visibleCount, setVisibleCount] = useState(0);
@@ -122,77 +113,42 @@ export default function HeroSection({ onJoin, submitted, loading }: HeroProps) {
             organic — all before your next post goes live.
           </p>
 
-          {/* Glass email form */}
-          {submitted ? (
-            <div style={{
-              background: "rgba(34,197,94,0.15)",
-              border: "1px solid rgba(34,197,94,0.35)",
-              borderRadius: 16,
-              padding: "16px 22px",
-              maxWidth: 450,
-            }}>
-              <p style={{ fontFamily: "'Poppins', sans-serif", color: "#16a34a", fontWeight: 700, fontSize: 16 }}>
-                🎉 You&apos;re on the list!
-              </p>
-              <p style={{ fontFamily: "'Poppins', sans-serif", color: "#2a2a2a", fontSize: 13, marginTop: 4 }}>
-                We&apos;ll notify you when Zepply launches.
-              </p>
-            </div>
-          ) : (
-            <div style={{
-              display: "flex",
+          <a
+            href="/api/instagram/connect"
+            style={{
+              display: "inline-flex",
               alignItems: "center",
-              background: "rgba(255,255,255,0.32)",
-              backdropFilter: "blur(18px)",
-              WebkitBackdropFilter: "blur(18px)",
-              border: "1.5px solid rgba(255,255,255,0.60)",
+              gap: 10,
+              fontFamily: "'Poppins', sans-serif",
+              fontWeight: 600,
+              fontSize: 15,
+              letterSpacing: "0.3px",
+              background: "linear-gradient(90deg, #FEDA75, #FA7E1E, #D62976, #962FBF, #4F5BD5)",
+              color: "#ffffff",
+              border: "none",
               borderRadius: 100,
-              padding: "5px 5px 5px 22px",
-              maxWidth: 450,
-              boxShadow: "0 4px 28px rgba(0,0,0,0.09)",
-            }}>
-              <input
-                type="email"
-                placeholder="example@gmail.com"
-                value={localEmail}
-                onChange={e => setLocalEmail(e.target.value)}
-                onKeyDown={e => e.key === "Enter" && onJoin(localEmail)}
-                style={{
-                  background: "transparent",
-                  border: "none",
-                  outline: "none",
-                  flex: 1,
-                  fontFamily: "'Poppins', sans-serif",
-                  fontSize: 14,
-                  color: "#1a1a1a",
-                  minWidth: 0,
-                }}
-              />
-              <button
-                onClick={() => onJoin(localEmail)}
-                disabled={loading}
-                style={{
-                  fontFamily: "'Poppins', sans-serif",
-                  fontWeight: 600,
-                  fontSize: 13,
-                  letterSpacing: "0.5px",
-                  background: "#1a1a1a",
-                  color: "#ffffff",
-                  border: "none",
-                  borderRadius: 100,
-                  padding: "13px 22px",
-                  cursor: loading ? "not-allowed" : "pointer",
-                  whiteSpace: "nowrap",
-                  opacity: loading ? 0.7 : 1,
-                  transition: "background 0.18s",
-                }}
-                onMouseEnter={e => !loading && (e.currentTarget.style.background = "#333")}
-                onMouseLeave={e => (e.currentTarget.style.background = "#1a1a1a")}
-              >
-                {loading ? "..." : "JOIN WAITLIST"}
-              </button>
-            </div>
-          )}
+              padding: "14px 28px",
+              cursor: "pointer",
+              textDecoration: "none",
+              whiteSpace: "nowrap",
+              boxShadow: "0 4px 24px rgba(214,41,118,0.35)",
+              transition: "opacity 0.18s, box-shadow 0.18s",
+              width: "fit-content",
+            }}
+            onMouseEnter={e => {
+              (e.currentTarget as HTMLAnchorElement).style.opacity = "0.88";
+              (e.currentTarget as HTMLAnchorElement).style.boxShadow = "0 6px 32px rgba(214,41,118,0.50)";
+            }}
+            onMouseLeave={e => {
+              (e.currentTarget as HTMLAnchorElement).style.opacity = "1";
+              (e.currentTarget as HTMLAnchorElement).style.boxShadow = "0 4px 24px rgba(214,41,118,0.35)";
+            }}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+            </svg>
+            Connect Instagram
+          </a>
 
           {/* Meta Business Partners badge */}
           <div style={{

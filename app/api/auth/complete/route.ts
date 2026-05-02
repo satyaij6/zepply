@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
   const username = searchParams.get("username");
   const igUserId = searchParams.get("igUserId");
   const profilePic = searchParams.get("profilePic");
-  const redirect = searchParams.get("redirect") || "/onboarding";
+  const redirect = searchParams.get("redirect") || "/connected";
 
   if (!userId) {
     return NextResponse.redirect(new URL("/login?error=no_user", request.url));
