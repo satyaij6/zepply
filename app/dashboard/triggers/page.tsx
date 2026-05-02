@@ -30,9 +30,10 @@ export default function TriggersPage() {
   }, [filter]);
 
   const fetchTriggers = async () => {
+    setLoading(true);
     try {
       const params = filter ? `?type=${filter}` : "";
-      const res = await fetch(`/api/triggers${params}`);
+      const res = await fetch(`/api/triggers${params}`, { cache: "no-store" });
       if (res.ok) {
         setTriggers(await res.json());
       }

@@ -122,6 +122,7 @@ function FlowBuilderInner() {
   });
   const [activating, setActivating] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [activateError, setActivateError] = useState("");
   const [showBack, setShowBack] = useState(false);
 
   const dmRef = useRef<HTMLTextAreaElement>(null);
@@ -220,6 +221,7 @@ function FlowBuilderInner() {
 
   const handleActivate = async () => {
     setActivating(true);
+    setActivateError("");
     try {
       const settingsRes = await fetch("/api/settings");
       let igAccountId = "";
@@ -227,7 +229,7 @@ function FlowBuilderInner() {
         const user = await settingsRes.json();
         igAccountId = user.igAccounts?.[0]?.id || "";
       }
-      await fetch("/api/triggers", {
+      const res = await fetch("/api/triggers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -249,9 +251,14 @@ function FlowBuilderInner() {
           followUpDelayMins: followUpOn ? followUpHours * 60 + followUpMinutes : null,
         }),
       });
-      setShowSuccess(true);
+      if (res.ok) {
+        setShowSuccess(true);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setActivateError(err?.error || "Failed to save automation. Please try again.");
+      }
     } catch {
-      setShowSuccess(true);
+      setActivateError("Something went wrong. Please try again.");
     } finally {
       setActivating(false);
     }
@@ -320,7 +327,7 @@ function FlowBuilderInner() {
               Live Preview
             </div>
             <button
-              onClick={() => router.push("/dashboard/triggers")}
+              onClick={() => { router.refresh(); router.push("/dashboard/triggers"); }}
               className="px-4 py-1.5 border border-[#E5E7EB] rounded-full text-[13px] font-semibold text-[#374151] hover:bg-[#F9FAFB] transition-colors"
             >
               Save Draft
@@ -350,7 +357,7 @@ function FlowBuilderInner() {
             Leave without saving?
             <div className="flex gap-2">
               <button onClick={() => setShowBack(false)} className="px-3.5 py-1 border border-[#D97706] rounded-full bg-white text-[#92400E] text-[12px] font-semibold">Keep editing</button>
-              <button onClick={() => router.push("/dashboard/triggers")} className="px-3.5 py-1 bg-[#D97706] rounded-full text-white text-[12px] font-semibold">Leave</button>
+              <button onClick={() => { router.refresh(); router.push("/dashboard/triggers"); }} className="px-3.5 py-1 bg-[#D97706] rounded-full text-white text-[12px] font-semibold">Leave</button>
             </div>
           </div>
         )}
@@ -1048,7 +1055,10 @@ function FlowBuilderInner() {
                   <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1L4.5 6h4L6.5 13 12.5 6H8.5L11 1H7z" fill="white" /></svg>
                   {activating ? "Activating..." : "Activate Automation"}
                 </button>
-                <button onClick={() => router.push("/dashboard/triggers")} className="w-full text-center text-[13px] font-medium text-[#6B7280] hover:text-[#374151] transition-colors">
+                {activateError && (
+                  <p className="text-[12px] text-[#EF4444] text-center font-medium">{activateError}</p>
+                )}
+                <button onClick={() => { router.refresh(); router.push("/dashboard/triggers"); }} className="w-full text-center text-[13px] font-medium text-[#6B7280] hover:text-[#374151] transition-colors">
                   Save as Draft
                 </button>
               </div>
@@ -1467,7 +1477,7 @@ function FlowBuilderInner() {
           <h2 className="text-[26px] font-extrabold text-white mb-2" style={{ animation: "fade-in 0.4s ease-out forwards", opacity: 0, animationDelay: "0.3s" }}>Automation activated!</h2>
           <p className="text-[14px] text-white/80 mb-8" style={{ animation: "fade-in 0.4s ease-out forwards", opacity: 0, animationDelay: "0.4s" }}>{autoName} is now live</p>
           <div className="flex gap-3" style={{ animation: "fade-in 0.4s ease-out forwards", opacity: 0, animationDelay: "0.5s" }}>
-            <button onClick={() => router.push("/dashboard/triggers")} className="px-6 py-3 border-2 border-white/50 rounded-full text-white font-semibold text-[14px] hover:bg-white/10 transition-colors">
+            <button onClick={() => { router.refresh(); router.push("/dashboard/triggers"); }} className="px-6 py-3 border-2 border-white/50 rounded-full text-white font-semibold text-[14px] hover:bg-white/10 transition-colors">
               View Automations
             </button>
             <button onClick={() => router.push("/dashboard")} className="px-6 py-3 bg-white rounded-full text-[#16A34A] font-bold text-[14px] hover:opacity-90 transition-opacity">
