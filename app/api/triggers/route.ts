@@ -4,21 +4,22 @@ import { z } from "zod";
 
 const createTriggerSchema = z.object({
   igAccountId: z.string(),
-  name: z.string().optional(),
+  name: z.string().nullish(),
   type: z.enum(["COMMENT", "DM_KEYWORD", "STORY_REPLY", "NEW_FOLLOWER"]),
   keywords: z.array(z.string()).default([]),
   replyMessage: z.string().min(1).max(1000),
-  deliverLink: z.string().url().optional().or(z.literal("")),
+  // The form sends null when no link is set, "" when cleared, or a URL.
+  deliverLink: z.union([z.string().url(), z.literal(""), z.null()]).optional(),
   followGate: z.boolean().default(false),
   publicReplyOn: z.boolean().default(false),
   publicReplies: z.array(z.string()).default([]),
-  postScope: z.enum(["specific", "next", "any"]).optional(),
-  selectedPostId: z.string().nullable().optional(),
-  openingDmText: z.string().optional(),
-  openingDmBtnLabel: z.string().optional(),
+  postScope: z.enum(["specific", "next", "any"]).nullish(),
+  selectedPostId: z.string().nullish(),
+  openingDmText: z.string().nullish(),
+  openingDmBtnLabel: z.string().nullish(),
   followUpOn: z.boolean().default(false),
-  followUpText: z.string().optional(),
-  followUpDelayMins: z.number().int().min(0).optional(),
+  followUpText: z.string().nullish(),
+  followUpDelayMins: z.number().int().min(0).nullish(),
 });
 
 // Shared in-memory store for local dev (when DB is unreachable)
@@ -144,8 +145,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(trigger, { status: 201 });
   } catch (error: any) {
     if (error instanceof z.ZodError) {
+      const first = error.issues[0];
+      const fieldPath = first?.path?.join(".") || "field";
       return NextResponse.json(
-        { error: "Validation failed", details: error.issues },
+        {
+          error: `Invalid ${fieldPath}: ${first?.message || "validation failed"}`,
+          details: error.issues,
+        },
         { status: 400 }
       );
     }
