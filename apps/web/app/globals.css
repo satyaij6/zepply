@@ -19,10 +19,41 @@
   --color-zep-muted: #9CA3AF;
   --color-zep-gray: #6B7280;
   --color-zep-border: #D9D9D9;
+  /* Landing palette: near-black with a navy glow, silver highlights and an electric-blue accent */
+  --color-night: #08080B;
+  --color-night-raised: #111116;
+  --color-night-line: #23232B;
+  --color-silver: #C7CBF2;
+  --color-electric: #3D7EFF;
+  --color-electric-bright: #5A92FF;
+  /* Product mock-ups on the landing page: silver "paper" UI with ink text */
+  --color-paper: #E9EBF3;
+  --color-paper-raised: #F5F6FA;
+  --color-paper-line: #D9DCE6;
+  --color-ink: #0F1020;
+  --color-ink-soft: #5C6070;
+  --color-electric-deep: #2F6BF0;
+  --color-electric-wash: #D6E2FF;
+}
+
+/*
+ * `inline` makes the font utilities use these values directly rather than var(--font-…).
+ * The --font-landing-* variables are only defined on the landing page wrapper (next/font),
+ * so resolving them up at :root would leave the tokens empty.
+ */
+@theme inline {
+  --font-display: var(--font-landing-display), "Inter", sans-serif;
+  --font-hand: var(--font-landing-hand), cursive;
+  --font-serif: var(--font-landing-serif), Georgia, serif;
 }
 
 html {
   scrollbar-gutter: stable;
+}
+
+/* The landing page is dark: paint the canvas too, so overscroll bounce doesn't flash white */
+html:has(.landing-dark) {
+  background: var(--color-night);
 }
 
 body {
@@ -46,6 +77,39 @@ body {
 @keyframes pop-in {
   0% { transform: scale(0.8); opacity: 0; }
   100% { transform: scale(1); opacity: 1; }
+}
+
+/* Landing hero: slow drifting glows and a pulsing light beam */
+@keyframes glow-drift-a {
+  0%   { transform: translate3d(0, 0, 0) scale(1); }
+  50%  { transform: translate3d(-7%, 5%, 0) scale(1.12); }
+  100% { transform: translate3d(5%, -4%, 0) scale(0.94); }
+}
+
+@keyframes glow-drift-b {
+  0%   { transform: translate3d(-10%, 0, 0) scale(1); opacity: 0.7; }
+  100% { transform: translate3d(10%, 8%, 0) scale(1.15); opacity: 1; }
+}
+
+@keyframes glow-drift-c {
+  0%   { transform: translate3d(0, 0, 0) scale(1); opacity: 0.6; }
+  100% { transform: translate3d(12%, -10%, 0) scale(1.2); opacity: 1; }
+}
+
+@keyframes beam-pulse {
+  0%   { transform: scaleY(0.85); opacity: 0.55; }
+  100% { transform: scaleY(1.1); opacity: 1; }
+}
+
+/* Landing tools grid: endless post queue and the clip scanner's playhead */
+@keyframes queue-scroll {
+  from { transform: translateY(0); }
+  to   { transform: translateY(-50%); }
+}
+
+@keyframes clip-scan {
+  from { left: 0%; }
+  to   { left: 100%; }
 }
 
 @keyframes fade-in {
