@@ -34,6 +34,14 @@
   --color-ink-soft: #5C6070;
   --color-electric-deep: #2F6BF0;
   --color-electric-wash: #D6E2FF;
+  /* Dashboard app: warm off-white canvas, white cards, dark sidebar */
+  --color-app-bg: #F5F4F0;
+  --color-app-card: #FFFFFF;
+  --color-app-line: #EAE8E2;
+  --color-app-ink: #16161A;
+  --color-app-muted: #6E6B73;
+  --color-app-faint: #A19EA6;
+  --color-app-side: #0E0E11;
 }
 
 /*

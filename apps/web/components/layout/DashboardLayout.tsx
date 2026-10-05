@@ -1,84 +1,97 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
 import { MobileNav } from "./MobileNav";
 
-interface IgAccount {
+export interface ShellAccount {
   igUsername: string;
   igProfilePic?: string | null;
   followerCount?: number;
 }
 
-interface DashboardLayoutProps {
-  children: React.ReactNode;
-  igAccount?: IgAccount | null;
+export interface ShellUser {
+  name?: string | null;
+  plan: "FREE" | "PRO";
+  igAccount: ShellAccount | null;
 }
+
+const COLLAPSE_KEY = "zepply.sidebar.collapsed";
 
 // Module-level cache — survives page navigations, cleared on full reload
-let cachedIgAccount: IgAccount | null = null;
-let fetchPromise: Promise<void> | null = null;
+let cachedUser: ShellUser | null = null;
 
-function fetchAndCache(set: (v: IgAccount) => void) {
-  if (fetchPromise) return fetchPromise;
-  fetchPromise = fetch("/api/settings")
-    .then((r) => r.ok ? r.json() : null)
-    .then((user) => {
-      if (user?.igAccounts?.[0]) {
-        cachedIgAccount = {
-          igUsername: user.igAccounts[0].igUsername,
-          igProfilePic: user.igAccounts[0].igProfilePic,
-          followerCount: user.igAccounts[0].followerCount,
-        };
-        set(cachedIgAccount);
-      }
-    })
-    .catch(() => {})
-    .finally(() => { fetchPromise = null; });
-  return fetchPromise;
+const ShellContext = createContext<ShellUser | null>(null);
+
+/** The signed-in user's name, plan and Instagram account (null while loading). */
+export const useShellUser = () => useContext(ShellContext);
+
+/** Dev-only: `?demo=1` under `next dev` shows sample data instead of the database. */
+export const isDemo = () => process.env.NODE_ENV === "development" && typeof window !== "undefined" && new URLSearchParams(window.location.search).has("demo");
+
+function toShellUser(u: { name?: string | null; plan?: string; igAccounts?: ShellAccount[] }): ShellUser {
+  const ig = u.igAccounts?.[0];
+  return {
+    name: u.name ?? ig?.igUsername ?? null,
+    plan: u.plan === "PRO" ? "PRO" : "FREE",
+    igAccount: ig ? { igUsername: ig.igUsername, igProfilePic: ig.igProfilePic, followerCount: ig.followerCount } : null,
+  };
 }
 
-export function DashboardLayout({ children, igAccount: propIgAccount }: DashboardLayoutProps) {
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const [igAccount, setIgAccount] = useState<IgAccount | null>(propIgAccount || cachedIgAccount || null);
-  const [pinned, setPinned] = useState(false);
+export function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<ShellUser | null>(cachedUser);
+  const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
-    if (propIgAccount) {
-      cachedIgAccount = propIgAccount;
-      setIgAccount(propIgAccount);
-    } else if (!cachedIgAccount) {
-      fetchAndCache(setIgAccount);
-    }
-  }, [propIgAccount]);
+    // Restore the sidebar preference after hydration (storage can be unavailable)
+    let stored = false;
+    try {
+      stored = localStorage.getItem(COLLAPSE_KEY) === "1";
+    } catch {}
+    if (stored) queueMicrotask(() => setCollapsed(true));
+
+    if (cachedUser) return;
+    let alive = true;
+    const load = isDemo()
+      ? import("@/lib/dashboard-demo").then((m) => m.demoShellUser(new URLSearchParams(window.location.search).get("demo")))
+      : fetch("/api/settings")
+          .then((r) => (r.ok ? r.json() : null))
+          .then((u) => (u ? toShellUser(u) : null));
+    load
+      .then((u) => {
+        if (!alive || !u) return;
+        cachedUser = u;
+        setUser(u);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const toggleCollapsed = useCallback(() => {
+    setCollapsed((c) => {
+      try {
+        localStorage.setItem(COLLAPSE_KEY, c ? "0" : "1");
+      } catch {}
+      return !c;
+    });
+  }, []);
 
   return (
-    <div className="min-h-screen bg-[#F2F2F2]">
-      <Sidebar
-        igAccount={igAccount}
-        pinned={pinned}
-        onPinToggle={() => setPinned((p) => !p)}
-      />
-      <MobileNav isOpen={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
+    <ShellContext.Provider value={user}>
+      <div className="min-h-screen bg-app-bg text-app-ink" style={{ fontFamily: "'Inter', sans-serif" }}>
+        <Sidebar collapsed={collapsed} onToggle={toggleCollapsed} />
+        <MobileNav open={mobileOpen} onClose={() => setMobileOpen(false)} />
 
-      {/* Main content: shifts right when sidebar is pinned */}
-      <div
-        style={{
-          marginLeft: pinned ? 240 : 72,
-          transition: "margin-left 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
-        }}
-        className="hidden lg:block"
-      >
-        <TopBar onMenuClick={() => setMobileNavOpen(true)} igAccount={igAccount} />
-        <main className="px-10 pb-8 max-w-[1400px] mx-auto">{children}</main>
+        {/* One copy of the page; the sidebar offset only applies from lg up */}
+        <div className={`transition-[padding] duration-300 ease-out ${collapsed ? "lg:pl-[84px]" : "lg:pl-[260px]"}`}>
+          <TopBar onMenuClick={() => setMobileOpen(true)} />
+          <main className="mx-auto max-w-[1480px] px-4 pb-14 sm:px-6 lg:px-8">{children}</main>
+        </div>
       </div>
-
-      {/* Mobile: no sidebar offset */}
-      <div className="lg:hidden">
-        <TopBar onMenuClick={() => setMobileNavOpen(true)} igAccount={igAccount} />
-        <main className="px-4 pb-8">{children}</main>
-      </div>
-    </div>
+    </ShellContext.Provider>
   );
 }

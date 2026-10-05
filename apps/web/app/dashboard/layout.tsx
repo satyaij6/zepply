@@ -1,16 +1,14 @@
-"use client";
+import { Instrument_Serif, Inter_Tight } from "next/font/google";
+import { DashboardProviders } from "@/components/layout/DashboardProviders";
 
-import { SessionProvider } from "next-auth/react";
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
+// Same display and serif faces as the landing page (the font tokens read these variables)
+const interTight = Inter_Tight({ subsets: ["latin"], variable: "--font-landing-display" });
+const instrumentSerif = Instrument_Serif({ subsets: ["latin"], weight: "400", style: ["normal", "italic"], variable: "--font-landing-serif" });
 
-export default function DashboardRootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function DashboardRootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <SessionProvider>
-      <DashboardLayout>{children}</DashboardLayout>
-    </SessionProvider>
+    <div className={`${interTight.variable} ${instrumentSerif.variable}`}>
+      <DashboardProviders>{children}</DashboardProviders>
+    </div>
   );
 }
