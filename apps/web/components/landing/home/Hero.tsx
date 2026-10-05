@@ -78,7 +78,7 @@ export default function Hero() {
             ))}
           </ul>
 
-          <p className="mt-14 text-xs font-medium tracking-[0.14em] text-zinc-500">TRUSTED BY CREATORS AND BUSINESSES</p>
+          <p className="mt-14 text-xs font-medium tracking-[0.14em] text-zinc-500">WORKS WITH</p>
           <ul className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-4 text-zinc-400">
             {PLATFORMS.map((p) => (
               <li key={p} className="flex items-center gap-2 text-[15px] font-semibold tracking-tight">
