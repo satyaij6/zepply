@@ -1,0 +1,80 @@
+description = "Black canvas, square video inset, headline band above"
+
+# Matched to the user's reference frame ("Fear vs Clarity", 819x1456), whose
+# measurements are quoted below as fractions so they carry to 1080x1920.
+#
+# The video box is 1:1 -- full width, so 1080x1080. That choice is not
+# cosmetic: at 16:9 the box would have the same aspect as the source, the crop
+# would be the whole frame, and speaker-tracked reframing would do nothing at
+# all. A square box crops 720x720 out of a 1280x720 source, so the camera still
+# has somewhere to point. The reference box is 802x767, near enough square.
+#
+# Vertically: the reference box runs 0.271-0.798, centred at 0.534. A square
+# box at y=0.25 runs 0.25-0.8125, centred at 0.531. The caption sits inside the
+# lower part of the VIDEO box, not on the black -- see captions.anchor.
+
+[canvas]
+bg = "#000000"
+
+[video]
+mode = "inset"
+x = 0.0
+y = 0.25
+w = 1.0
+h = 0.5625              # 1:1 at full width
+
+[headline]
+enabled = true
+# The reference title is a heavy, NOT condensed grotesque. Anton is condensed
+# and read as a different design next to it. A STATIC ExtraBold, not
+# Roboto-Variable: libass draws a variable font at its default wght 400 and the
+# Bold flag does not move it (scripts/make_static_fonts.py cuts this face).
+font = "Roboto-ExtraBold-Static.ttf"
+# Roboto carries no Telugu, and titles can be Telugu with an English tail.
+# libass substitutes per glyph only from fonts that happen to be staged, so the
+# fallback is declared and the loader refuses the pair if between them they
+# cannot draw the script.
+fallback_font = "Peddana-Regular.ttf"
+size_pct = 0.050        # 96px: reference cap height is ~0.038 of the frame
+fill = "#FFFFFF"
+accent = "#E8141E"      # sampled from the reference's red
+accent_rule = "vs_flank"  # "Fear vs Clarity" -> Fear and Clarity take accent
+# In the reference the title stands just above the picture. valign = "bottom"
+# keeps it there for one line or two; a top-hung title would leave a line of
+# black under a one-line headline.
+valign = "bottom"
+gap_pct = 0.012         # reference: baseline 0.260, video top 0.271
+# Band: 0.10 down to 0.25 - 0.012 = 0.138 of the canvas, 265px. Two lines at
+# the 0.036 floor need 0.086, so there is room to shrink before the fitter has
+# to ellipsize. The loader checks this.
+y_pct = 0.10
+max_lines = 2
+min_size_pct = 0.036
+wrap = "word"
+
+[captions]
+# Romanised, as in the reference ("Okati,"). These episodes lean English, and
+# English spelled in Telugu script reads slowly.
+font = "Roboto-SemiBold-Static.ttf"   # static, for the same reason as the headline
+script = "roman"
+size_pct = 0.027        # 52px: reference text is ~0.026 of the frame
+fill = "#FFFFFF"        # white text...
+outline = "#000000"
+outline_px = 8          # with a box this is the box's padding, not a stroke
+box = true              # ...on a dark, see-through box
+box_color = "#000000"
+box_opacity = 0.62      # the reference box shows the picture through it
+anchor = "video"        # THE critical line: margins resolve against the video
+                        # rect, so the caption cannot land on the black canvas
+pos = "bottom"
+# Reference box bottom is 0.677 of the frame against a video bottom of 0.798:
+# 0.121 of the canvas = 0.23 of the video's height.
+inset_pct = 0.22
+max_width = 0.80
+
+# Face properties. Declared, not defaulted: a caption that silently loses its
+# fade or its weight looks like a render bug, not a missing key.
+bold = true
+shadow_px = 0           # a shadow on a box draws a second, offset box
+fade_in_ms = 180        # softens entry against a moving frame
+fade_out_ms = 60        # shorter: a caption lingering into the next reads wrong

@@ -1,36 +1,69 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Zepply
 
-## Getting Started
+**Create. Reply. Multiply.** — the always-on AI marketing platform for creators and businesses.
 
-First, run the development server:
+Product spec: [`docs/SPEC.pdf`](docs/SPEC.pdf) · Current task plan: [`docs/WAVE0.md`](docs/WAVE0.md)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Repository layout
+
+```
+zepply-platform/
+├─ apps/
+│  ├─ web/          Next.js 16 — primary product + public site (waitlist landing,
+│  │                Instagram comment→DM automation, leads, analytics)
+│  └─ mobile/       Expo SDK 57 — iOS + Android companion app
+├─ packages/
+│  ├─ types/        zod schemas + TypeScript types shared by web, mobile and API
+│  ├─ api-client/   typed client for /api/v1
+│  ├─ core/         shared product rules (statuses, roles, limits)
+│  ├─ i18n/         UI strings (en, te, hi — missing keys fall back to English)
+│  └─ tokens/       design tokens (colours, fonts, spacing)
+├─ workers/
+│  └─ clipper/      Python clip engine (long-form → short clips); see its SETUP.md
+└─ docs/            spec and task plan
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+`apps/web` keeps the full history of the original `zepply` repository (moved with `git mv`).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Getting started
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Requirements: **Node 20.9+** (22 recommended), **pnpm 10**, Git.
 
-## Learn More
+```bash
+npm install -g pnpm@10
+pnpm install
 
-To learn more about Next.js, take a look at the following resources:
+cp apps/web/.env.example apps/web/.env.local   # fill in, or `vercel env pull`
+pnpm --filter @zepply/web exec prisma generate
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+pnpm dev:web       # web app on http://localhost:3000
+pnpm dev:mobile    # Expo dev server (scan the QR with Expo Go)
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Other commands (run from the root):
 
-## Deploy on Vercel
+| Command | What it does |
+|---|---|
+| `pnpm build` | Builds every app and package |
+| `pnpm typecheck` | Type-checks every app and package |
+| `pnpm lint` | Lints every app |
+| `pnpm --filter @zepply/mobile exec expo install <pkg>` | Adds a mobile dependency at the SDK-compatible version (always use this for mobile) |
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Rules worth knowing
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **Two React versions on purpose.** Web uses React 19.2.4; mobile must use exactly the React version its React Native release ships (19.2.3 for SDK 57). pnpm's isolated installs keep them apart — don't switch to npm/yarn workspaces, which would hoist one copy and break an app.
+- **Shared packages ship TypeScript source.** Web compiles them via `transpilePackages` in `apps/web/next.config.ts`; Metro compiles them for mobile. Add a new package to that list.
+- **Install scripts are allow-listed** in `pnpm-workspace.yaml` (`onlyBuiltDependencies`). Add a package there only if it genuinely needs its install script.
+- **Secrets never get committed.** Every `.env*` is git-ignored except `.env.example`.
+- **Brand:** only the Zepply name in user-facing UI — never provider names (voice, AI model vendors). Never use "24/7" wording in copy.
+
+## Deployment (Vercel)
+
+The web app deploys from `apps/web`. When this monorepo layout reaches `main`, set **Project → Settings → Root Directory** to `apps/web` in Vercel (install command is `pnpm install`, from `apps/web/vercel.json`). Until then, production keeps building the old layout.
+
+> Note: `apps/web/vercel.json` runs `prisma db push` on every build, which applies schema changes straight to the production database. Replace it with Prisma migrations before the schema starts changing in Wave 0 (ticket T-08).
+
+## Machine notes (Windows)
+
+- If `git` HTTPS fails with a certificate error (antivirus HTTPS scanning), this repo is configured with `http.sslBackend=schannel`, which verifies against the Windows certificate store. Never disable verification.
+- pnpm 12's native `pnpm.exe` was removed by antivirus on the setup machine; pnpm 10 (pure JavaScript) is used instead.

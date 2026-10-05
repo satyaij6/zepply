@@ -1,0 +1,34 @@
+description = "Full-bleed, editorial serif captions"
+
+# Lighter outline: a heavy one clogs the serifs. Latin only.
+#
+# Sizes are fractions of canvas height, so a style survives a resolution
+# change. 60px on a 1920-tall canvas was calibrated by measuring
+# rendered ink height, not by the nominal em -- faces differ enough that
+# equal point sizes are not equal on screen.
+
+[canvas]
+bg = "#000000"          # never seen: the video covers the frame
+
+[video]
+mode = "full"
+
+[headline]
+enabled = false
+
+[captions]
+font = "GFSDidot-Regular.ttf"
+script = "roman"
+size_pct = 0.0312
+fill = "#FFFFFF"
+outline = "#000000"
+outline_px = 3
+box = false
+anchor = "canvas"
+pos = "bottom"
+inset_pct = 0.12
+max_width = 0.86
+bold = false
+shadow_px = 2
+fade_in_ms = 180
+fade_out_ms = 60

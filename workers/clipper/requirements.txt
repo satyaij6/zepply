@@ -1,0 +1,30 @@
+# Runtime
+requests>=2.31
+truststore>=0.9          # verify TLS against the OS store; see SETUP.md (AVG MITM)
+python-dotenv>=1.0
+anthropic>=0.120
+pydantic>=2.7
+numpy>=1.26
+yt-dlp>=2024.1           # only needed for URL sources
+
+# Forced alignment -- Sarvam provides no word-level timestamps, so we produce
+# them locally. CPU wheels are fine; the MMS_FA model downloads once (~1.2GB).
+torch>=2.2
+torchaudio>=2.2
+# GPU alignment is ~18-28x faster with identical timings (measured, RTX 4050).
+# Same versions, CUDA variant only -- needs NVIDIA driver 580+ for cu130:
+#   pip install --index-url https://download.pytorch.org/whl/cu130 --no-deps \
+#       torch==2.13.0+cu130 torchaudio==2.11.0+cu130
+# --device defaults to auto, so nothing else changes once it is installed.
+# NOTE: do NOT add torchcodec. clipper/align.py reads wavs with the stdlib
+# `wave` module precisely to avoid that dependency. See SETUP.md.
+
+# Captions / analysis
+Pillow>=10.0             # ink-width measurement in the Telugu shaping test
+# Reads a font's cmap, which Pillow cannot. styles.py refuses a style whose
+# headline font plus fallback cannot draw the script it will be asked to
+# render -- without the cmap that check would be a guess.
+fonttools>=4.40
+
+# Dev
+pytest>=8.0

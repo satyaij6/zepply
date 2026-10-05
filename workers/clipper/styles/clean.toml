@@ -1,0 +1,36 @@
+description = "Full-bleed 9:16, plain captions low in frame"
+
+# The output this tool has always produced. Its job now is to keep producing
+# exactly that: tests/test_style_regression.py holds the decoded-frame hashes
+# of a render made before styles existed, and this file must still match them.
+# Change a value here and that test fails, which is the point.
+
+[canvas]
+bg = "#000000"          # never seen: the video covers the frame
+
+[video]
+mode = "full"           # no inset, so the crop is the canvas aspect (9:16)
+
+[headline]
+enabled = false         # nothing above a full-bleed frame
+
+[captions]
+font = "Peddana-Regular.ttf"
+script = "telugu"
+size_pct = 0.055        # 106px on a 1920-tall canvas, matching the calibrated
+                        # ink height of the romanised look this replaced
+fill = "#FFFFFF"
+outline = "#000000"
+outline_px = 4
+box = false             # plain white text, drop shadow only
+anchor = "canvas"
+pos = "bottom"
+inset_pct = 0.12        # 230px up from the bottom edge
+max_width = 0.86
+
+# Face properties. Declared, not defaulted: a caption that silently loses its
+# fade or its weight looks like a render bug, not a missing key.
+bold = true
+shadow_px = 2
+fade_in_ms = 180        # softens entry against a moving frame
+fade_out_ms = 60        # shorter: a caption lingering into the next reads wrong

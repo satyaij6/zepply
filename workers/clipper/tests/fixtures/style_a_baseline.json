@@ -1,0 +1,23 @@
+{
+  "centre_crop_chain": "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920",
+  "span_graph": [
+    "[0:v]crop=405:720:158:0,scale=1080:1920[s0r0v]",
+    "[s0r0v]fps=25,format=yuv420p,setsar=1,setpts=PTS-STARTPTS[s0r0n]",
+    "[1:v]crop=405:720:611:0,scale=1080:1920[s0r1v]",
+    "[s0r1v]fps=25,format=yuv420p,setsar=1,setpts=PTS-STARTPTS[s0r1n]",
+    "[s0r0n][s0r1n]concat=n=2:v=1:a=0[s0cc]",
+    "[s0cc]settb=1/25,fps=25,setsar=1,format=yuv420p[s0cat]"
+  ],
+  "span_label": "s0cat",
+  "span_inputs": 2,
+  "ass_roman": "[Script Info]\nScriptType: v4.00+\nPlayResX: 1080\nPlayResY: 1920\nWrapStyle: 2\nScaledBorderAndShadow: yes\n\n; The Events format below MUST list Name between Style and MarginL. Every\n; Dialogue line carries that (empty) field, so declaring nine columns for ten\n; values makes libass fold Effect into Text -- and the separating comma is then\n; drawn as literal text. That shipped a leading \",\" on every burned caption.\n\n[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\nStyle: Cap,Noto Sans Telugu,64,&H00FFFFFF,&H000000FF,&H00000000,&H90000000,-1,0,0,0,100,100,0,0,1,4,2,2,60,60,230,1\nStyle: Card,Noto Sans Telugu,46,&H0000E5FF,&H000000FF,&H00000000,&HA0000000,-1,0,0,0,100,100,0,0,1,5,2,8,60,60,192,1\n\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\nDialogue: 0,0:00:00.00,0:00:01.00,Cap,,0,0,0,,{\\fad(180,60)}Heroes Kodukule Heroes\nDialogue: 0,0:00:01.00,0:00:02.20,Cap,,0,0,0,,{\\fad(180,60)}Avvala? Ante\n",
+  "ass_telugu": "[Script Info]\nScriptType: v4.00+\nPlayResX: 1080\nPlayResY: 1920\nWrapStyle: 2\nScaledBorderAndShadow: yes\n\n; The Events format below MUST list Name between Style and MarginL. Every\n; Dialogue line carries that (empty) field, so declaring nine columns for ten\n; values makes libass fold Effect into Text -- and the separating comma is then\n; drawn as literal text. That shipped a leading \",\" on every burned caption.\n\n[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\nStyle: Cap,Peddana,106,&H00FFFFFF,&H000000FF,&H00000000,&H90000000,-1,0,0,0,100,100,0,0,1,4,2,2,60,60,230,1\nStyle: Card,Peddana,76,&H0000E5FF,&H000000FF,&H00000000,&HA0000000,-1,0,0,0,100,100,0,0,1,5,2,8,60,60,192,1\n\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\nDialogue: 0,0:00:00.00,0:00:01.00,Cap,,0,0,0,,{\\fad(180,60)}Heroes Kodukule Heroes\nDialogue: 0,0:00:01.00,0:00:02.20,Cap,,0,0,0,,{\\fad(180,60)}Avvala? Ante\n",
+  "render": {
+    "source": "test1.mp4",
+    "start": 68.06,
+    "duration": 6.0,
+    "frames": 150,
+    "framemd5_sha256": "7ef8e663b53fb96834e0fc36fd792dc6a04350d6acdac517887fd3eb3e55db9b",
+    "first_row": "0,          1,          1,        1,  3110400, bb8e99728456fc076e7519d8541936e4"
+  }
+}
