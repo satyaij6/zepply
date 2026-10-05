@@ -38,7 +38,7 @@ export default function WaitlistForm() {
 
   return (
     <>
-      <form onSubmit={join} className="mx-auto mt-10 flex w-full max-w-[520px] flex-col gap-3 sm:flex-row">
+      <form onSubmit={join} className="mx-auto mt-10 flex w-full max-w-[580px] flex-col gap-3 sm:flex-row">
         <label htmlFor="waitlist-email" className="sr-only">
           Email address
         </label>
@@ -50,12 +50,12 @@ export default function WaitlistForm() {
           placeholder="you@example.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="h-14 w-full rounded-xl border border-white/15 bg-night/70 px-5 text-base text-white outline-none backdrop-blur placeholder:text-zinc-500 focus:border-electric sm:flex-1"
+          className="h-[60px] w-full rounded-2xl border border-white/15 bg-night/70 px-6 text-lg text-white outline-none backdrop-blur placeholder:text-zinc-500 focus:border-electric sm:flex-1"
         />
         <button
           type="submit"
           disabled={status === "loading"}
-          className="inline-flex h-14 items-center justify-center gap-2.5 rounded-xl bg-electric px-7 text-base font-medium text-white shadow-[0_0_32px_-6px_rgba(61,126,255,0.7)] ring-1 ring-inset ring-white/20 transition hover:bg-electric-bright disabled:opacity-70"
+          className="inline-flex h-[60px] items-center justify-center gap-2.5 rounded-2xl bg-electric px-8 text-lg font-medium text-white shadow-[0_0_32px_-6px_rgba(61,126,255,0.7)] ring-1 ring-inset ring-white/20 transition hover:bg-electric-bright disabled:opacity-70"
         >
           {status === "loading" ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Join the waitlist <ArrowRight className="h-4 w-4" /></>}
         </button>

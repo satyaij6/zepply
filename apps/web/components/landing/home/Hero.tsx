@@ -36,7 +36,7 @@ export default function Hero() {
           </span>
 
           {/* Two-tone headline; the logo tile stands in for the word "Zepply" (its alt text) */}
-          <h1 className="mt-6 font-display text-[clamp(40px,4.3vw,70px)] font-bold leading-[1.1] tracking-[-0.035em] text-white">
+          <h1 className="mt-6 font-display text-[clamp(40px,4.3vw,70px)] font-bold leading-[1.1] tracking-[-0.028em] text-white">
             Marketing, simply.
             <br />
             <span className="text-silver">With</span>{" "}

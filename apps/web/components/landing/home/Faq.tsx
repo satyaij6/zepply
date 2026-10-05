@@ -38,7 +38,7 @@ export default function Faq() {
   const [open, setOpen] = useState<number | null>(0);
 
   return (
-    <section id="faq" className="scroll-mt-28 px-4 pt-32 sm:px-8 lg:px-14 lg:pt-44">
+    <section id="faq" className="scroll-mt-28 px-4 pt-32 sm:px-8 lg:px-14 lg:pt-40">
       <div className="mx-auto grid max-w-[1424px] gap-14 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:gap-20">
         <div className="lg:sticky lg:top-32 lg:self-start">
           <SectionHeader

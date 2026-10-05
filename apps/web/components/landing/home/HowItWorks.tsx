@@ -1,17 +1,17 @@
 "use client";
 import Image from "next/image";
-import { AnimatePresence, motion, useInView } from "framer-motion";
+import { AnimatePresence, motion, useMotionValueEvent, useScroll, useTransform, type MotionValue } from "framer-motion";
 import { Check, Globe, Sparkles } from "lucide-react";
-import { useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
+import { useRef, useState, type ComponentType, type ReactNode } from "react";
 import BrandIcon, { BRAND_LABELS, type Brand } from "./BrandIcon";
 import SectionHeader, { Accent } from "./SectionHeader";
 import { EASE_OUT, useSeen, useStepper } from "./anim";
 
 /*
- * A scroll story: the three steps scroll by on the left while one large app
- * window stays pinned on the right and switches to the screen for whichever
- * step is in the middle of the viewport. Below `lg` there's no pinning; each
- * step simply shows its own screen underneath.
+ * A pinned scene: on desktop the step index and the app window stay put while
+ * the visitor scrolls through a tall track; how far they've scrolled picks the
+ * active step and fills that step's progress line. On smaller screens each step
+ * simply shows its own window underneath.
  */
 
 const PLATFORMS: Brand[] = ["instagram", "youtube", "tiktok", "facebook", "whatsapp", "x"];
@@ -22,14 +22,28 @@ const STEPS: { tab: string; title: string; body: string; Screen: ComponentType }
   { tab: "Reply", title: "Reply & grow", body: "Automate DMs, manage comments and track results — all on autopilot.", Screen: ReplyScreen },
 ];
 
+/** Scroll distance per step, in viewport heights. */
+const STEP_VH = 70;
+
 export default function HowItWorks() {
+  const scene = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({ target: scene, offset: ["start start", "end end"] });
   const [active, setActive] = useState(0);
-  const goTo = (i: number) => document.getElementById(`step-${i}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+  useMotionValueEvent(scrollYProgress, "change", (v) => setActive(Math.min(STEPS.length - 1, Math.max(0, Math.floor(v * STEPS.length)))));
+
+  const goTo = (i: number) => {
+    const el = scene.current;
+    if (!el) return;
+    const top = el.getBoundingClientRect().top + window.scrollY;
+    const span = el.offsetHeight - window.innerHeight;
+    window.scrollTo({ top: top + (span * (i + 0.2)) / STEPS.length, behavior: "smooth" });
+  };
 
   return (
-    <section id="how-it-works" className="scroll-mt-28 px-4 pt-32 sm:px-8 lg:px-14 lg:pt-44">
+    <section id="how-it-works" className="scroll-mt-28 px-4 pt-28 sm:px-8 lg:px-14 lg:pt-36">
       <div className="mx-auto max-w-[1424px]">
         <SectionHeader
+          align="stack"
           index="01"
           label="How it works"
           title={
@@ -40,52 +54,95 @@ export default function HowItWorks() {
           intro="Zepply handles the boring work, so you can focus on what you do best."
         />
 
-        <div className="mt-16 grid grid-cols-[minmax(0,1fr)] gap-20 lg:mt-10 lg:grid-cols-[minmax(0,0.72fr)_minmax(0,1.28fr)] lg:gap-20">
-          <ol>
-            {STEPS.map((step, i) => (
-              <StepText key={step.title} index={i} step={step} active={active === i} onActive={setActive} />
-            ))}
-          </ol>
-          <div className="hidden lg:block">
-            <div className="sticky top-[calc(50vh-18rem)]">
+        <div ref={scene} className="relative hidden lg:block" style={{ height: `${STEPS.length * STEP_VH + 30}vh` }}>
+          <div className="sticky top-0 flex h-screen items-center pt-16">
+            <div className="grid w-full grid-cols-[minmax(0,0.72fr)_minmax(0,1.28fr)] items-center gap-20">
+              <ol>
+                {STEPS.map((step, i) => (
+                  <IndexItem key={step.title} index={i} step={step} active={active === i} progress={scrollYProgress} onSelect={goTo} />
+                ))}
+              </ol>
               <AppFrame active={active} onSelect={goTo} />
             </div>
           </div>
         </div>
+
+        <ol className="mt-16 space-y-20 lg:hidden">
+          {STEPS.map((step, i) => (
+            <li key={step.title}>
+              <div className="border-l-2 border-electric pl-6">
+                <span className="font-serif text-4xl italic leading-none text-silver">0{i + 1}</span>
+                <h3 className="mt-4 font-display text-[28px] font-semibold leading-tight tracking-[-0.025em] text-white">{step.title}</h3>
+                <p className="mt-3 text-base leading-relaxed text-zinc-400">{step.body}</p>
+                {i === 0 && <PlatformRow className="mt-5" />}
+              </div>
+              <div className="mt-8">
+                <AppFrame active={i} />
+              </div>
+            </li>
+          ))}
+        </ol>
       </div>
     </section>
   );
 }
 
-function StepText({ index, step, active, onActive }: { index: number; step: (typeof STEPS)[number]; active: boolean; onActive: (i: number) => void }) {
-  const ref = useRef<HTMLLIElement>(null);
-  // "Active" means the step crosses a thin band through the middle of the viewport
-  const centred = useInView(ref, { margin: "-45% 0px -45% 0px" });
-  useEffect(() => {
-    if (centred) onActive(index);
-  }, [centred, index, onActive]);
+function IndexItem({
+  index,
+  step,
+  active,
+  progress,
+  onSelect,
+}: {
+  index: number;
+  step: (typeof STEPS)[number];
+  active: boolean;
+  progress: MotionValue<number>;
+  onSelect: (i: number) => void;
+}) {
+  // This step's slice of the scene, as a 0–100% fill
+  const fill = useTransform(progress, [index / STEPS.length, (index + 1) / STEPS.length], ["0%", "100%"]);
 
   return (
-    <li ref={ref} id={`step-${index}`} className="mb-20 last:mb-0 lg:mb-0 lg:flex lg:min-h-[80vh] lg:items-center">
-      <div className={`border-l-2 pl-8 transition duration-500 ${active ? "border-electric" : "border-night-line lg:opacity-35"}`}>
-        <span className="font-serif text-5xl italic leading-none text-zinc-500">0{index + 1}</span>
-        <h3 className="mt-5 font-display text-[clamp(28px,2.5vw,38px)] font-semibold leading-tight tracking-[-0.035em] text-white">{step.title}</h3>
-        <p className="mt-3 max-w-[400px] text-base leading-relaxed text-zinc-400 sm:text-lg">{step.body}</p>
-        {index === 0 && (
-          <ul className="mt-6 flex flex-wrap gap-3">
-            {PLATFORMS.map((p) => (
-              <li key={p}>
-                <BrandIcon brand={p} size={22} mono={p === "x"} className={p === "x" ? "text-white" : undefined} />
-                <span className="sr-only">{BRAND_LABELS[p]}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-      <div className="mt-10 lg:hidden">
-        <AppFrame active={index} />
-      </div>
+    <li>
+      <button type="button" onClick={() => onSelect(index)} aria-current={active ? "step" : undefined} className="group block w-full py-6 text-left">
+        <span className="flex items-baseline gap-5">
+          <span className={`w-9 shrink-0 font-serif text-3xl italic leading-none transition-colors duration-500 ${active ? "text-silver" : "text-zinc-600"}`}>0{index + 1}</span>
+          <span
+            className={`font-display text-[clamp(26px,2.3vw,34px)] font-semibold leading-tight tracking-[-0.025em] transition-colors duration-500 ${
+              active ? "text-white" : "text-zinc-600 group-hover:text-zinc-400"
+            }`}
+          >
+            {step.title}
+          </span>
+        </span>
+        <motion.span
+          className="block overflow-hidden"
+          initial={false}
+          animate={active ? { height: "auto", opacity: 1 } : { height: 0, opacity: 0 }}
+          transition={{ duration: 0.5, ease: EASE_OUT }}
+        >
+          <span className="ml-14 block max-w-[400px] pt-3 text-base leading-relaxed text-zinc-400 xl:text-lg">{step.body}</span>
+          {index === 0 && <PlatformRow className="ml-14 pt-5" />}
+        </motion.span>
+        <span className="relative mt-6 block h-px overflow-hidden bg-white/10">
+          <motion.span className="absolute inset-y-0 left-0 bg-electric" style={{ width: fill }} />
+        </span>
+      </button>
     </li>
+  );
+}
+
+function PlatformRow({ className = "" }: { className?: string }) {
+  return (
+    <span className={`flex flex-wrap gap-3 ${className}`}>
+      {PLATFORMS.map((p) => (
+        <span key={p}>
+          <BrandIcon brand={p} size={22} mono={p === "x"} className={p === "x" ? "text-white" : undefined} />
+          <span className="sr-only">{BRAND_LABELS[p]}</span>
+        </span>
+      ))}
+    </span>
   );
 }
 
@@ -171,10 +228,15 @@ function Appear({ show, children, className, y = 8 }: { show: boolean; children:
   );
 }
 
+function Label({ children }: { children: ReactNode }) {
+  return <p className="text-xs font-medium uppercase tracking-wider text-ink-soft">{children}</p>;
+}
+
 /* ── Step 1: accounts switch on one by one while the brand profile fills in ── */
 
 const BRAND_COLOURS = ["#3B2A20", "#C8925A", "#EADBC8", "#2F6BF0", "#F5F1EA"];
 const BRAND_TONE = ["Warm", "Playful", "Coffee-first"];
+const AUDIENCE = ["Coffee lovers", "22–34", "Hyderabad"];
 
 function ConnectScreen() {
   const [ref, seen] = useSeen<HTMLDivElement>();
@@ -199,10 +261,10 @@ function ConnectScreen() {
         <CardTitle>Your brand</CardTitle>
         <div className="mt-3 flex items-center gap-2 rounded-xl border border-paper-line bg-white px-3 py-2.5 text-sm text-ink">
           <Globe className="h-4 w-4 text-ink-soft" /> brewhouse.in
-          <span className="ml-auto text-xs font-medium text-electric-deep">{step < 7 ? "Learning…" : "Done"}</span>
+          <span className="ml-auto text-xs font-medium text-electric-deep">{step < 9 ? "Learning…" : "Done"}</span>
         </div>
         <Appear show={step >= 6} className="mt-5">
-          <p className="text-xs font-medium uppercase tracking-wider text-ink-soft">Colours</p>
+          <Label>Colours</Label>
           <div className="mt-2 flex gap-2">
             {BRAND_COLOURS.map((c) => (
               <span key={c} className="h-8 w-8 rounded-lg ring-1 ring-black/10" style={{ background: c }} />
@@ -210,7 +272,7 @@ function ConnectScreen() {
           </div>
         </Appear>
         <Appear show={step >= 7} className="mt-4">
-          <p className="text-xs font-medium uppercase tracking-wider text-ink-soft">Voice</p>
+          <Label>Voice</Label>
           <div className="mt-2 flex flex-wrap gap-1.5">
             {BRAND_TONE.map((t) => (
               <span key={t} className="rounded-full bg-electric-wash px-2.5 py-1 text-xs font-medium text-electric-deep">
@@ -219,7 +281,17 @@ function ConnectScreen() {
             ))}
           </div>
         </Appear>
-        <Appear show={step >= 8} className="mt-auto pt-4">
+        <Appear show={step >= 8} className="mt-4">
+          <Label>Audience</Label>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {AUDIENCE.map((t) => (
+              <span key={t} className="rounded-full bg-white px-2.5 py-1 text-xs font-medium text-ink ring-1 ring-paper-line">
+                {t}
+              </span>
+            ))}
+          </div>
+        </Appear>
+        <Appear show={step >= 9} className="mt-auto pt-4">
           <p className="rounded-xl bg-white p-3 font-serif text-lg italic leading-snug text-ink">&ldquo;Slow mornings, strong coffee.&rdquo;</p>
         </Appear>
       </Card>

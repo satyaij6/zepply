@@ -102,9 +102,9 @@ body {
 }
 
 /* Landing tools grid: endless post queue and the clip scanner's playhead */
-@keyframes queue-scroll {
-  from { transform: translateY(0); }
-  to   { transform: translateY(-50%); }
+@keyframes queue-slide {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
 }
 
 @keyframes clip-scan {

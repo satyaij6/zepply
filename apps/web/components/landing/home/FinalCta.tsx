@@ -21,11 +21,12 @@ export default function FinalCta() {
 
       <Reveal className="relative mx-auto max-w-[880px] text-center">
         <p className="text-xs font-medium uppercase tracking-[0.22em] text-zinc-500">Be part of what&apos;s next</p>
-        <h2 className="mt-7 font-display text-[clamp(44px,7vw,104px)] font-semibold leading-[0.98] tracking-[-0.05em] text-white">
+        <h2 className="mt-7 font-display text-[clamp(44px,7vw,104px)] font-semibold leading-[1] tracking-[-0.035em] text-white">
           Join the <Accent>waitlist</Accent>.
         </h2>
         <p className="mx-auto mt-6 max-w-[480px] text-base leading-relaxed text-zinc-400 sm:text-lg">Get early access, exclusive updates and special pricing.</p>
         <WaitlistForm />
+        <p className="mt-4 text-sm text-zinc-500">No spam. Unsubscribe anytime.</p>
       </Reveal>
     </section>
   );

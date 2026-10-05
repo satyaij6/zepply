@@ -20,6 +20,41 @@ export function Reveal({ children, className, delay = 0, y = 28 }: { children: R
   );
 }
 
+/**
+ * Text that rises into place from behind a mask the first time it's seen.
+ * The outer span watches the viewport; the inner one starts clipped below it.
+ */
+export function Rise({ children, delay = 0 }: { children: ReactNode; delay?: number }) {
+  const reduce = useReducedMotion();
+  return (
+    <motion.span
+      className="-mb-[0.2em] inline-block overflow-hidden pb-[0.2em] pr-[0.08em] align-bottom"
+      initial={reduce ? false : "hidden"}
+      whileInView="shown"
+      viewport={{ once: true, margin: "0px 0px -10% 0px" }}
+    >
+      <motion.span className="inline-block" variants={{ hidden: { y: "115%" }, shown: { y: 0 } }} transition={{ duration: 1, delay, ease: EASE_OUT }}>
+        {children}
+      </motion.span>
+    </motion.span>
+  );
+}
+
+/** A hairline that draws itself from left to right when it scrolls into view. */
+export function DrawLine({ className = "", delay = 0 }: { className?: string; delay?: number }) {
+  const reduce = useReducedMotion();
+  return (
+    <motion.div
+      aria-hidden
+      className={`h-px origin-left bg-white/10 ${className}`}
+      initial={reduce ? false : { scaleX: 0 }}
+      whileInView={{ scaleX: 1 }}
+      viewport={{ once: true }}
+      transition={{ duration: 1.4, delay, ease: EASE_OUT }}
+    />
+  );
+}
+
 /** A ref plus whether that element has (once) scrolled into view. */
 export function useSeen<T extends Element>(amount = 0.35) {
   const ref = useRef<T>(null);

@@ -16,6 +16,8 @@ type Case = {
   reply: string;
   attachment?: { title: string; meta: string };
   quick: string[];
+  /** The quick reply the customer taps, and Zepply's confirmation. */
+  followUp: { pick: string; confirm: string };
 };
 
 const CASES: Case[] = [
@@ -34,6 +36,7 @@ const CASES: Case[] = [
     reply: "Hey Meera! Here's the free 7-day home workout plan you asked for 💪",
     attachment: { title: "7-Day Home Workout Plan", meta: "PDF · Free" },
     quick: ["Start Day 1", "Coaching info"],
+    followUp: { pick: "Start Day 1", confirm: "Day 1 is a 20-minute full-body warm-up 💪 I'll check in tomorrow with Day 2!" },
   },
   {
     id: "cafes",
@@ -50,6 +53,7 @@ const CASES: Case[] = [
     reply: "Hi Rahul! Here's today's menu ☕ Shall I hold a table for you this evening?",
     attachment: { title: "Brew House — Menu", meta: "Updated today" },
     quick: ["Table for 2", "Table for 4"],
+    followUp: { pick: "Table for 2", confirm: "Booked! A table for 2 at 7:30 PM is held for you. See you tonight ☕" },
   },
   {
     id: "gyms",
@@ -65,6 +69,7 @@ const CASES: Case[] = [
     comment: { user: "karthik.runs", keyword: "TRIAL" },
     reply: "Welcome Karthik! Here's your free 3-day pass 🏋️ Which branch suits you best?",
     quick: ["Kondapur", "Gachibowli"],
+    followUp: { pick: "Kondapur", confirm: "Great choice! Your pass is active at Kondapur from tomorrow, 6 AM 🏋️" },
   },
   {
     id: "realestate",
@@ -81,10 +86,11 @@ const CASES: Case[] = [
     reply: "Hi Sneha! Here's the brochure and price sheet for Green Meadows 🏡 Shall I book a site visit this weekend?",
     attachment: { title: "Green Meadows — Brochure", meta: "PDF · 12 pages" },
     quick: ["Saturday", "Sunday"],
+    followUp: { pick: "Saturday", confirm: "Site visit booked for Saturday, 11 AM. Our advisor will call to confirm 🏡" },
   },
 ];
 
-const AUTOPLAY_MS = 6500;
+const AUTOPLAY_MS = 8000;
 
 export default function UseCases() {
   const [index, setIndex] = useState(0);
@@ -106,7 +112,7 @@ export default function UseCases() {
   };
 
   return (
-    <section id="use-cases" className="scroll-mt-28 px-4 pt-32 sm:px-8 lg:px-14 lg:pt-44">
+    <section id="use-cases" className="scroll-mt-28 px-4 pt-32 sm:px-8 lg:px-14 lg:pt-40">
       <div className="mx-auto max-w-[1424px]">
         <SectionHeader
           index="03"
@@ -151,38 +157,43 @@ export default function UseCases() {
                   ))}
                 </div>
 
-                <AnimatePresence mode="wait" initial={false}>
-                  <motion.div
-                    key={current.id}
-                    role="tabpanel"
-                    className="mt-12 flex flex-1 flex-col"
-                    initial={{ opacity: 0, y: 14 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    transition={{ duration: 0.4, ease: EASE_OUT }}
-                  >
-                    <h3 className="font-display text-[clamp(32px,3.4vw,52px)] font-semibold leading-[1.05] tracking-[-0.04em] text-white">{current.title}</h3>
-                    <p className="mt-4 max-w-[460px] text-base leading-relaxed text-zinc-400 sm:text-lg">{current.body}</p>
-                    <ol className="mt-10 border-b border-white/10">
-                      {current.points.map((p, i) => (
-                        <li key={p} className="flex items-baseline gap-5 border-t border-white/10 py-4 text-[15px] text-zinc-200">
-                          <span className="font-serif text-lg italic text-zinc-500">0{i + 1}</span>
-                          {p}
-                        </li>
-                      ))}
-                    </ol>
-                  </motion.div>
-                </AnimatePresence>
+                {/* Copy sits centred in the space under the tabs, level with the phone */}
+                <div className="my-auto pt-12">
+                  <AnimatePresence mode="wait" initial={false}>
+                    <motion.div
+                      key={current.id}
+                      role="tabpanel"
+                      initial={{ opacity: 0, y: 14 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.4, ease: EASE_OUT }}
+                    >
+                      <h3 className="font-display text-[clamp(32px,3.4vw,52px)] font-semibold leading-[1.05] tracking-[-0.028em] text-balance text-white">{current.title}</h3>
+                      <p className="mt-4 max-w-[460px] text-base leading-relaxed text-zinc-400 sm:text-lg">{current.body}</p>
+                      <ol className="mt-10 border-b border-white/10">
+                        {current.points.map((p, i) => (
+                          <li key={p} className="flex items-baseline gap-5 border-t border-white/10 py-4 text-[15px] text-zinc-200">
+                            <span className="font-serif text-lg italic text-zinc-500">0{i + 1}</span>
+                            {p}
+                          </li>
+                        ))}
+                      </ol>
+                    </motion.div>
+                  </AnimatePresence>
 
-                <a href="#waitlist" className="mt-10 inline-flex w-fit items-center gap-2 text-sm font-medium text-white transition hover:gap-3">
-                  Join the waitlist <ArrowRight className="h-4 w-4" />
-                </a>
+                  <a href="#waitlist" className="mt-8 inline-flex w-fit items-center gap-2 text-sm font-medium text-white transition hover:gap-3">
+                    Join the waitlist <ArrowRight className="h-4 w-4" />
+                  </a>
+                </div>
               </div>
 
               <div className="relative flex items-center justify-center overflow-hidden border-t border-white/10 bg-[#0A0A0D] px-6 py-14 lg:border-l lg:border-t-0">
                 <div aria-hidden className="absolute inset-0 bg-[radial-gradient(rgba(255,255,255,0.07)_1px,transparent_1px)] [background-size:22px_22px] [mask-image:radial-gradient(ellipse_at_center,black_30%,transparent_75%)]" />
                 <div aria-hidden className="absolute left-1/2 top-1/2 h-[420px] w-[420px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-electric/20 blur-[100px]" />
-                <Phone current={current} />
+                <div className="relative flex flex-col items-center gap-5">
+                  <Phone current={current} />
+                  <p className="text-xs text-zinc-500">Sent automatically by Zepply</p>
+                </div>
               </div>
             </div>
           </div>
@@ -194,7 +205,9 @@ export default function UseCases() {
 
 /** A phone showing the comment-to-DM flow for the selected case. */
 function Phone({ current }: { current: Case }) {
-  const { account, comment, reply, attachment, quick } = current;
+  const { account, comment, reply, attachment, quick, followUp } = current;
+  // The customer taps a quick reply after the options appear, then Zepply confirms
+  const pickAt = attachment ? 2.2 : 1.8;
   const item = (delay: number) => ({
     initial: { opacity: 0, y: 12, scale: 0.97 },
     animate: { opacity: 1, y: 0, scale: 1 },
@@ -204,7 +217,7 @@ function Phone({ current }: { current: Case }) {
   return (
     <div className="relative w-[290px] sm:w-[310px]">
       <div className="rounded-[46px] border border-white/15 bg-[#1A1A20] p-2.5 shadow-[0_40px_100px_-30px_rgba(0,0,0,0.95)]">
-        <div className="relative flex h-[580px] flex-col overflow-hidden rounded-[37px] bg-paper">
+        <div className="relative flex h-[600px] flex-col overflow-hidden rounded-[37px] bg-paper">
           <span aria-hidden className="absolute left-1/2 top-2.5 h-6 w-24 -translate-x-1/2 rounded-full bg-[#1A1A20]" />
 
           <div className="flex items-center gap-3 border-b border-paper-line px-4 pb-3 pt-12">
@@ -221,7 +234,7 @@ function Phone({ current }: { current: Case }) {
           </div>
 
           <AnimatePresence mode="wait" initial={false}>
-            <motion.div key={current.id} exit={{ opacity: 0, transition: { duration: 0.2 } }} className="flex flex-1 flex-col gap-3 px-3.5 py-5">
+            <motion.div key={current.id} exit={{ opacity: 0, transition: { duration: 0.2 } }} className="flex min-h-0 flex-1 flex-col justify-end gap-3 overflow-hidden px-3.5 py-4">
               <motion.div {...item(0.1)} className="mx-auto flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-[11px] text-ink-soft shadow-sm">
                 <MessageCircle className="h-3.5 w-3.5" />@{comment.user} commented <b className="font-semibold text-ink">&ldquo;{comment.keyword}&rdquo;</b>
               </motion.div>
@@ -244,14 +257,24 @@ function Phone({ current }: { current: Case }) {
 
               <motion.div {...item(attachment ? 1.4 : 1)} className="flex flex-wrap justify-end gap-1.5">
                 {quick.map((q) => (
-                  <span key={q} className="rounded-full border border-electric-deep/40 bg-white px-3 py-1.5 text-xs font-medium text-electric-deep">
+                  <motion.span
+                    key={q}
+                    initial={false}
+                    animate={q === followUp.pick ? { scale: [1, 0.92, 1] } : undefined}
+                    transition={{ duration: 0.3, delay: pickAt - 0.3 }}
+                    className="rounded-full border border-electric-deep/40 bg-white px-3 py-1.5 text-xs font-medium text-electric-deep"
+                  >
                     {q}
-                  </span>
+                  </motion.span>
                 ))}
               </motion.div>
 
-              <motion.p {...item(attachment ? 1.8 : 1.4)} className="mt-auto text-center text-[11px] text-ink-soft">
-                Sent automatically by Zepply
+              <motion.p {...item(pickAt)} className="max-w-[80%] self-start rounded-2xl rounded-bl-md bg-white px-3.5 py-2.5 text-[13px] text-ink shadow-sm">
+                {followUp.pick}
+              </motion.p>
+
+              <motion.p {...item(pickAt + 0.8)} className="max-w-[85%] self-end rounded-2xl rounded-br-md bg-electric-deep px-3.5 py-2.5 text-[13px] leading-snug text-white">
+                {followUp.confirm}
               </motion.p>
             </motion.div>
           </AnimatePresence>

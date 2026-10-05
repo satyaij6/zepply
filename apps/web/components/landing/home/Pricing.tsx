@@ -58,7 +58,7 @@ export default function Pricing() {
   );
 
   return (
-    <section id="pricing" className="scroll-mt-28 px-4 pt-32 sm:px-8 lg:px-14 lg:pt-44">
+    <section id="pricing" className="scroll-mt-28 px-4 pt-32 sm:px-8 lg:px-14 lg:pt-48">
       <div className="mx-auto max-w-[1424px]">
         <SectionHeader
           index="04"
@@ -68,6 +68,7 @@ export default function Pricing() {
               Plans for every stage of your <Accent>journey</Accent>.
             </>
           }
+          align="center"
           intro="Start free and upgrade as you grow."
           action={toggle}
         />
@@ -93,7 +94,7 @@ export default function Pricing() {
                     <AnimatePresence mode="popLayout" initial={false}>
                       <motion.span
                         key={billing}
-                        className="font-display text-[56px] font-semibold leading-none tracking-[-0.045em] text-white tabular-nums"
+                        className="font-display text-[56px] font-semibold leading-none tracking-[-0.03em] text-white tabular-nums"
                         initial={{ y: 40, opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
                         exit={{ y: -40, opacity: 0 }}
