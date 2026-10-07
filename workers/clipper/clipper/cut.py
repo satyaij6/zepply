@@ -198,9 +198,11 @@ def render_plan(
     )
 
     zoom = emphasis.zoom_chain(punches or [], settings, fps)
-    # With B-roll the captions go on last, over the graphics; see broll.py.
+    # With B-roll or kinetic words the captions go on last, over the
+    # graphics, in one browser render; see broll.py and kinetic.py.
+    overlay = settings.broll or layout.kinetic_on
     final_captions = burn_captions
-    burn_captions = burn_captions and not settings.broll
+    burn_captions = burn_captions and not overlay
     if single:
         _render_single(plan, video, ass, media_path, settings,
                        burn_captions=burn_captions, out_dir=out_dir,
@@ -223,13 +225,14 @@ def render_plan(
             hint="Check the source still exists and every span is inside it.",
         )
 
-    if settings.broll:
+    if overlay:
         if frame_plans is None:
             frame_plans = plan_framings(plan, reframe_ctx, settings,
                                         source_size=source_size, fps=fps)
         broll.apply(plan, index, video, ass, words, settings, fps=fps,
                     burn=final_captions, title=plan.suggested_title,
-                    frame_plans=frame_plans, cache_dir=paths.work)
+                    frame_plans=frame_plans, cache_dir=paths.work,
+                    ctx=reframe_ctx, audio=paths.audio)
 
     if settings.covers:
         _stage_font(out_dir, ASSETS_DIR / cover.FONT)
@@ -451,8 +454,10 @@ def cut_plans(
         entry["cover_path"] = str(cover_path) if cover_path.exists() else None
         entry["punches"] = [p.to_dict() for p in punches.get(n, [])]
         broll_json = paths.root / f"clip_{n:02d}_broll.json"
-        entry["broll"] = (json.loads(broll_json.read_text(encoding="utf-8"))["moments"]
-                          if settings.broll and broll_json.exists() else [])
+        overlay_summary = (json.loads(broll_json.read_text(encoding="utf-8"))
+                           if broll_json.exists() else {})
+        entry["broll"] = overlay_summary.get("moments") or []
+        entry["kinetic"] = overlay_summary.get("kinetic")
         entry.update(clip_kits.get(str(n), {}))
         entry["final_score"] = round(
             plan.final(settings.w_hook, settings.w_standalone, settings.w_coherence), 4

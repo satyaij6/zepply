@@ -44,3 +44,6 @@ npm-debug.log*
 
 # Claude Code personal settings
 .claude/settings.local.json
+
+# Reference videos for style study (not ours to redistribute)
+/refs/

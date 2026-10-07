@@ -9,6 +9,7 @@ export type ClipLanguage = (typeof CLIP_LANGUAGES)[number]["value"];
 
 /** Caption styles: the files in workers/clipper/styles. "Latin" styles show the speech in English letters. */
 export const CLIP_STYLES = [
+  { value: "kinetic", label: "Kinetic", script: "Latin", note: "Words around the speaker, a pen mark on the key word" },
   { value: "clean", label: "Clean", script: "Telugu", note: "Plain captions low in frame" },
   { value: "telugu_noto", label: "Noto", script: "Telugu", note: "Telugu in Noto Sans" },
   { value: "roman", label: "Roman", script: "Latin", note: "Romanised captions" },

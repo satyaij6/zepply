@@ -300,7 +300,11 @@ def _box(layout: str) -> str:
 
 
 def assemble(moments: list[Moment], project: Path, *, duration: float, fps: int,
-             accent: str | None = None) -> Path:
+             accent: str | None = None, layer=None) -> Path:
+    """
+    One composition: the clip, the B-roll moments, and optionally a kinetic
+    caption layer (kinetic.Layer) drawn above everything.
+    """
     hosts, styles, calls = [], [], []
     for n, m in enumerate(moments):
         hosts.append(
@@ -340,12 +344,14 @@ html, body {{ margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden
 .moment {{ position: absolute; overflow: hidden; pointer-events: none; }}
 {HAIRLINE_CSS}
 {chr(10).join(styles)}
+{layer.css if layer else ""}
 </style>
 </head>
 <body>
 <div id="stage" data-composition-id="broll" data-start="0" data-duration="{duration:.3f}" data-fps="{fps}" data-width="{W}" data-height="{H}">
 <div id="video-wrap"><video id="bg-video" src="clip.mp4" playsinline muted data-start="0" data-duration="{duration:.3f}" data-track-index="1"></video></div>
 {chr(10).join(hosts)}
+{layer.html if layer else ""}
 <script src="vendor/gsap.min.js"></script>
 <script src="vendor/hairline.js"></script>
 <script>
@@ -353,6 +359,7 @@ html, body {{ margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden
   const tl = gsap.timeline({{ paused: true }});
   const rand = function (i) {{ const x = Math.sin((i + 1) * 12.9898 + 78.233) * 43758.5453; return x - Math.floor(x); }};
 {chr(10).join(calls)}
+{layer.js if layer else ""}
   window.__timelines["broll"] = tl;
 }})();
 </script>
@@ -438,43 +445,78 @@ def burn_captions(picture: Path, audio_from: Path, ass: Path, dest: Path, out_di
 
 def apply(plan: ClipPlan, index: int, video: Path, ass: Path, words: list[Word],
           settings: Settings, *, fps: int, burn: bool, title: str | None = None,
-          frame_plans: list | None = None, cache_dir: Path | None = None) -> dict | None:
+          frame_plans: list | None = None, cache_dir: Path | None = None,
+          ctx=None, audio: Path | None = None) -> dict | None:
     """
-    Turn the caption-free render at `video` into the finished clip, with B-roll
-    when it can be made. Always leaves a finished clip at `video`.
-    Returns a summary of the moments, or None when the clip went out without.
+    Turn the caption-free render at `video` into the finished clip: B-roll
+    moments when they are on and can be made, kinetic words when the style
+    draws its captions in the browser. Always leaves a finished clip at
+    `video` -- with plain burned captions if anything here fails.
+    Returns a summary, or None when the clip went out plain.
     """
+    from . import kinetic
+
     out_dir = video.parent
     clean = out_dir / f"{video.stem}_clean.mp4"
     clean.unlink(missing_ok=True)
     video.rename(clean)
     work = out_dir / f"{video.stem}_broll"
-    summary = None
+    duration = plan.total_duration
+    style = settings.layout_style
+    moments: list[Moment] = []
+    layer = None
+    picture, captions = clean, burn
     try:
-        summary = _make(plan, index, clean, words, settings, fps=fps, work=work, title=title,
-                        solo=solo_windows(plan, frame_plans), cache_dir=cache_dir)
-    except Exception as exc:  # noqa: BLE001 - B-roll must never cost the clip
-        log.warning("broll: clip_%02d goes out without B-roll: %s", index, exc)
+        stage_project(work, clean, fps)
+        if settings.broll:
+            try:
+                moments = _design(plan, index, words, settings, fps=fps, work=work, title=title,
+                                  solo=solo_windows(plan, frame_plans), cache_dir=cache_dir) or []
+            except Exception as exc:  # noqa: BLE001 - B-roll must never cost the clip
+                log.warning("broll: clip_%02d goes out without B-roll: %s", index, exc)
+        if style.kinetic_on and burn:
+            layer = kinetic.build(
+                plan, words, settings, frame_plans=frame_plans, ctx=ctx, audio=audio,
+                blocked=[(m.start, m.end) for m in moments if m.layout != "overlay"],
+                accent=settings.broll_accent or style.kinetic.get("accent") or "#3888F0",
+                script=style.kinetic.get("script", "roman"), seed=index)
+        if moments or layer:
+            assemble(moments, work, duration=duration, fps=fps,
+                     accent=settings.broll_accent, layer=layer)
+            errors = lint_errors(work, settings)
+            if errors:
+                raise ClipperError("overlay composition fails lint: " + "; ".join(errors[:4]))
+            log.info("broll: clip_%02d rendering %d moment(s)%s", index, len(moments),
+                     f" and {layer.summary['beats']} kinetic beats" if layer else "")
+            render(work, work / "broll.mp4", settings, fps)
+            picture = work / "broll.mp4"
+            captions = burn and layer is None
+    except Exception as exc:  # noqa: BLE001 - the clip ships plain rather than not at all
+        log.warning("broll: clip_%02d goes out plain: %s", index, exc)
+        moments, layer, picture, captions = [], None, clean, burn
 
-    picture = work / "broll.mp4" if summary else clean
-    burn_captions(picture, clean, ass, video, out_dir, captions=burn)
-    if summary is not None:
+    burn_captions(picture, clean, ass, video, out_dir, captions=captions)
+    summary = None
+    if picture != clean:
+        summary = {"moments": [{"id": m.id, "start": m.start, "end": m.end, "layout": m.layout,
+                                "idea": m.idea} for m in moments],
+                   "kinetic": layer.summary if layer else None}
         (out_dir / f"{video.stem}_broll.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
     if not settings.broll_keep_work:
         clean.unlink(missing_ok=True)
     return summary
 
 
-def _make(plan: ClipPlan, index: int, clean: Path, words: list[Word], settings: Settings,
-          *, fps: int, work: Path, title: str | None, solo: list[tuple[float, float]],
-          cache_dir: Path | None) -> dict | None:
+def _design(plan: ClipPlan, index: int, words: list[Word], settings: Settings,
+            *, fps: int, work: Path, title: str | None, solo: list[tuple[float, float]],
+            cache_dir: Path | None) -> list[Moment] | None:
+    """Claude's B-roll moments for one clip, checked and linted, not yet rendered."""
     duration = plan.total_duration
     timed = clip_words(plan, words)
     if duration < 12 or len(timed) < 10:
         log.info("broll: clip_%02d is too short for B-roll", index)
         return None
 
-    stage_project(work, clean, fps)
     prompt = build_prompt(plan, timed, duration, title=title, accent=settings.broll_accent,
                           solo=solo)
     # A design is paid for once: re-rendering the same clip (a new style, a
@@ -488,7 +530,7 @@ def _make(plan: ClipPlan, index: int, clean: Path, words: list[Word], settings: 
         moments = sanitize(design, duration, solo)
         assemble(moments, work, duration=duration, fps=fps, accent=settings.broll_accent)
         if moments and not lint_errors(work, settings):
-            return _render_and_summarise(moments, index, work, settings, fps)
+            return moments
 
     client = _client(settings)
     content = [*_stills(work / "clip.mp4", duration, work), {"type": "text", "text": prompt}]
@@ -520,13 +562,6 @@ def _make(plan: ClipPlan, index: int, clean: Path, words: list[Word], settings: 
              "the broken ones):\n- " + "\n- ".join(errors[:20])},
         ]
 
-    return _render_and_summarise(moments, index, work, settings, fps)
-
-
-def _render_and_summarise(moments: list[Moment], index: int, work: Path, settings: Settings,
-                          fps: int) -> dict:
-    log.info("broll: clip_%02d rendering %d moment(s): %s", index, len(moments),
+    log.info("broll: clip_%02d designed %d moment(s): %s", index, len(moments),
              ", ".join(f"{m.id} {m.layout} {m.start:.1f}-{m.end:.1f}s" for m in moments))
-    render(work, work / "broll.mp4", settings, fps)
-    return {"moments": [{"id": m.id, "start": m.start, "end": m.end, "layout": m.layout,
-                         "idea": m.idea} for m in moments]}
+    return moments

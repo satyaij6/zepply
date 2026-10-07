@@ -211,6 +211,16 @@ SCHEMA: dict[str, dict[str, tuple]] = {
 
 TOP_LEVEL = {"description"}
 
+# Sections a style may leave out, with what leaving them out means. Kinetic
+# captions are drawn by the browser over the clip (clipper/kinetic.py); a
+# style without the section burns its captions with libass as always.
+OPTIONAL = {"kinetic": {"enabled": False}}
+SCHEMA["kinetic"] = {
+    "enabled": (_flag, True),
+    "accent": (_colour, False),            # the pen; the Brand Kit accent overrides it
+    "script": (_one_of("telugu", "roman"), False),
+}
+
 
 # ------------------------------------------------------------------ style
 
@@ -222,6 +232,11 @@ class Style:
     video: dict
     headline: dict
     captions: dict
+    kinetic: dict = None  # type: ignore[assignment]
+
+    @property
+    def kinetic_on(self) -> bool:
+        return bool(self.kinetic and self.kinetic.get("enabled"))
 
     # -------------------------------------------------------- geometry
     def video_rect(self, canvas_w: int, canvas_h: int) -> Rect:
@@ -444,12 +459,15 @@ def load_style(path: Path) -> Style:
                   hint + f"Valid sections: {', '.join(sorted(SCHEMA))}")
     for section in SCHEMA:
         if section not in raw:
+            if section in OPTIONAL:
+                continue
             _fail(path, f"missing section [{section}]",
-                  f"Required sections: {', '.join(sorted(SCHEMA))}")
+                  f"Required sections: {', '.join(sorted(set(SCHEMA) - set(OPTIONAL)))}")
         if not isinstance(raw[section], dict):
             _fail(path, f"[{section}] must be a table")
 
-    checked = {s: _check_section(path, s, raw[s]) for s in SCHEMA}
+    checked = {s: (_check_section(path, s, raw[s]) if s in raw else dict(OPTIONAL[s]))
+               for s in SCHEMA}
     _check_conditionals(path, checked)
     return Style(name=path.stem, description=raw.get("description", ""),
                  **checked)
