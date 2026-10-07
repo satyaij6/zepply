@@ -1,10 +1,20 @@
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+let client: Resend | null = null;
+
+/** Created on first send, so builds and environments without a key (staging, local) still work. */
+async function send(payload: Parameters<Resend["emails"]["send"]>[0]) {
+  if (!process.env.RESEND_API_KEY) {
+    console.warn(`RESEND_API_KEY not set; skipped email "${payload.subject}"`);
+    return;
+  }
+  client ??= new Resend(process.env.RESEND_API_KEY);
+  await client.emails.send(payload);
+}
 
 export async function sendWelcomeEmail(email: string, name?: string) {
   try {
-    await resend.emails.send({
+    await send({
       from: "Zepply <onboarding@contact.zepply.app>",
       to: email,
       subject: "Welcome to Zepply! 🚀",
@@ -48,7 +58,7 @@ export async function sendLeadAlertEmail(
   triggerKeyword: string
 ) {
   try {
-    await resend.emails.send({
+    await send({
       from: "Zepply <alerts@contact.zepply.app>",
       to: email,
       subject: `🎯 New lead captured: @${leadUsername}`,
@@ -77,7 +87,7 @@ export async function sendLeadAlertEmail(
 
 export async function sendMagicLinkEmail(email: string, url: string) {
   try {
-    await resend.emails.send({
+    await send({
       from: "Zepply <login@contact.zepply.app>",
       to: email,
       subject: "Sign in to Zepply",
