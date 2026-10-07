@@ -87,3 +87,20 @@ def test_split_only_where_one_person_fills_the_frame():
                              _moment(3, 28, 32, layout="cutaway")])
     assert [m.id for m in sanitize(design, 40, solo)] == ["m1", "m3"]
     assert [m.id for m in sanitize(design, 40, [])] == ["m3"]
+
+
+def test_hairline_is_loaded_and_its_live_clock_is_refused(tmp_path):
+    from clipper.broll import HAIRLINE_EXAMPLE, system_prompt
+
+    html = assemble([_moment(1, 5, 9)], tmp_path, duration=40.0, fps=25, accent="#123456").read_text(encoding="utf-8")
+    # kernel after GSAP, palette at the root so a moment's background can use it
+    assert html.index("vendor/gsap.min.js") < html.index("vendor/hairline.js")
+    assert "--accent: #123456" in html and ":root { --hl-plate:" in html
+    assert "transition" not in html.split("<body>")[0]  # no clock outside the timeline
+    for call in ("HL.register(stage, tick)", "HL.pointer(stage, {})", "const s = HL.spring(0);"):
+        assert sanitize(Design(moments=[_moment(1, 5, 9, animation=call)]), 40) == []
+    # the brief carries the worked example, and the example passes the sanitiser
+    brief = system_prompt()
+    assert "{{HAIRLINE_EXAMPLE}}" not in brief and "const { Cam, fit, proj" in brief
+    body = HAIRLINE_EXAMPLE.read_text(encoding="utf-8")
+    assert sanitize(Design(moments=[_moment(1, 5, 9, animation=body)]), 40) != []

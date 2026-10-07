@@ -47,6 +47,7 @@ log = logging.getLogger(__name__)
 
 BROLL_ASSETS = ASSETS_DIR / "broll"
 PROMPT_PATH = PROMPTS_DIR / "broll_designer.md"
+HAIRLINE_EXAMPLE = PROMPTS_DIR / "broll_hairline_example.js"
 W, H = 1080, 1920
 SPLIT_H = 960
 SPLIT_SHIFT = 570      # px the speaker slides down during a split moment
@@ -62,6 +63,30 @@ FONT_FACES = """
 @font-face { font-family: "Zalando Sans Expanded"; font-weight: 200 900; font-display: block; src: url("fonts/ZalandoSansExpanded-Variable.ttf") format("truetype"); }
 @font-face { font-family: "Caveat"; font-weight: 700; font-display: block; src: url("fonts/Caveat-700-latin.woff2") format("woff2"); }
 @font-face { font-family: "Noto Sans Telugu"; font-weight: 100 900; font-display: block; src: url("fonts/NotoSansTelugu.woff2") format("woff2"); }
+"""
+
+# Hairline's palette and strokes, retuned for a 1080x1920 video. The kernel's
+# own css() is written for a 400px web figure: a 0.9px non-scaling stroke that
+# vanishes on a phone, a dim dark palette, and 260ms CSS transitions on stroke
+# colour -- which run on the browser's clock, not the timeline's, so a frame
+# captured mid-transition would differ from one captured later. No transitions.
+HAIRLINE_CSS = """
+:root { --hl-plate: #0B0B0F; --hl-hi: var(--accent); --hl-edge: #9EA1AB; --hl-mid: #55575F;
+  --hl-lo: #303138; --hl-sw: 3.2; }
+[data-hairline] { display: block; position: relative; }
+[data-hairline] > svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; overflow: visible; }
+[data-hairline] svg :where(path, polygon, ellipse, line) { fill: var(--hl-plate); stroke: var(--hl-mid);
+  stroke-width: var(--hl-sw); vector-effect: non-scaling-stroke; stroke-linejoin: round; stroke-linecap: round; }
+[data-hairline] svg :where(.nf) { fill: none; }
+[data-hairline] svg :where(.fo) { stroke: none; }
+[data-hairline] svg :where(.sil) { stroke: var(--hl-edge); }
+[data-hairline] svg :where(.hi) { stroke: var(--hl-hi); }
+[data-hairline] svg :where(.lo) { stroke: var(--hl-lo); }
+[data-hairline] svg :where(.dash) { stroke-dasharray: 3 10; }
+[data-hairline] svg :where(.dot) { stroke: none; fill: var(--hl-hi); }
+[data-hairline] svg :where(.dot.m) { fill: var(--hl-edge); }
+[data-hairline] svg :where(.dot.off) { fill: var(--hl-lo); }
+[data-hairline] svg :where(.ghost path) { fill: none; stroke: var(--hl-mid); }
 """
 
 
@@ -181,6 +206,12 @@ def build_prompt(plan: ClipPlan, timed, duration: float, *, title: str | None,
 
 # ------------------------------------------------------------------ Claude
 
+def system_prompt() -> str:
+    """The design brief, with the worked Hairline moment pasted in."""
+    return PROMPT_PATH.read_text(encoding="utf-8").replace(
+        "{{HAIRLINE_EXAMPLE}}", HAIRLINE_EXAMPLE.read_text(encoding="utf-8").strip())
+
+
 def _client(settings: Settings):
     import anthropic
 
@@ -194,7 +225,7 @@ def _ask(client, settings: Settings, messages: list) -> tuple[Design | None, lis
     """One design request. Returns the design (None on refusal) and the reply content."""
     import anthropic
 
-    system = PROMPT_PATH.read_text(encoding="utf-8")
+    system = system_prompt()
 
     def once():
         try:
@@ -250,8 +281,10 @@ def sanitize(design: Design, duration: float,
             reason = "split over a shot that is not one person"
         elif re.search(r"<\s*(script|img|iframe|link)\b|https?://|\son\w+\s*=", m.html, re.I):
             reason = "forbidden markup"
-        elif re.search(r"Math\.random|Date\.|setTimeout|setInterval|requestAnimationFrame|fetch\(|"
-                       r"XMLHttpRequest|import\(|eval\(|new Function|repeat:\s*-1", m.animation):
+        elif re.search(r"Math\.random|Date\.|performance\.now|setTimeout|setInterval|"
+                       r"requestAnimationFrame|fetch\(|XMLHttpRequest|import\(|eval\(|new Function|"
+                       r"repeat:\s*-1|\bregister\s*\(|\bpointer\s*\(|\btset\s*\(|\bstepS\s*\(|"
+                       r"\bspring\s*\(|\btween\s*\(", m.animation):
             reason = "non-deterministic or unsafe code"
         if reason:
             log.warning("broll: dropping %s (%s)", m.id, reason)
@@ -266,7 +299,8 @@ def _box(layout: str) -> str:
     return f"left:0;top:0;width:{W}px;height:{H}px"
 
 
-def assemble(moments: list[Moment], project: Path, *, duration: float, fps: int) -> Path:
+def assemble(moments: list[Moment], project: Path, *, duration: float, fps: int,
+             accent: str | None = None) -> Path:
     hosts, styles, calls = [], [], []
     for n, m in enumerate(moments):
         hosts.append(
@@ -296,6 +330,7 @@ def assemble(moments: list[Moment], project: Path, *, duration: float, fps: int)
 <meta charset="utf-8" />
 <style>
 {FONT_FACES}
+:root {{ --accent: {accent or "#E8453C"}; }}
 * {{ box-sizing: border-box; }}
 html, body {{ margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000;
   font-family: "Inter Tight", "Inter", "Noto Sans Telugu", sans-serif; }}
@@ -303,6 +338,7 @@ html, body {{ margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden
 #video-wrap {{ position: absolute; left: 0; top: 0; width: {W}px; height: {H}px; overflow: hidden; }}
 #video-wrap video {{ width: 100%; height: 100%; object-fit: cover; object-position: 50% 38%; }}
 .moment {{ position: absolute; overflow: hidden; pointer-events: none; }}
+{HAIRLINE_CSS}
 {chr(10).join(styles)}
 </style>
 </head>
@@ -311,6 +347,7 @@ html, body {{ margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden
 <div id="video-wrap"><video id="bg-video" src="clip.mp4" playsinline muted data-start="0" data-duration="{duration:.3f}" data-track-index="1"></video></div>
 {chr(10).join(hosts)}
 <script src="vendor/gsap.min.js"></script>
+<script src="vendor/hairline.js"></script>
 <script>
 (function () {{
   const tl = gsap.timeline({{ paused: true }});
@@ -335,6 +372,7 @@ def stage_project(project: Path, clean: Path, fps: int) -> None:
     (project / "vendor").mkdir(parents=True)
     shutil.copytree(BROLL_ASSETS / "fonts", project / "fonts")
     shutil.copy(BROLL_ASSETS / "gsap.min.js", project / "vendor" / "gsap.min.js")
+    shutil.copy(BROLL_ASSETS / "hairline" / "kernel.js", project / "vendor" / "hairline.js")
     # A sparse GOP freezes the picture under the overlays when the renderer
     # seeks; one keyframe per second of frames makes every seek cheap.
     ffmpeg.run(["-i", str(clean), "-an", "-c:v", "libx264", "-preset", "veryfast", "-crf", "16",
@@ -441,14 +479,14 @@ def _make(plan: ClipPlan, index: int, clean: Path, words: list[Word], settings: 
                           solo=solo)
     # A design is paid for once: re-rendering the same clip (a new style, a
     # fixed bug downstream) reuses it while the prompt and the brief match.
-    key = hashlib.sha256((prompt + PROMPT_PATH.read_text(encoding="utf-8")
+    key = hashlib.sha256((prompt + system_prompt()
                           + settings.broll_model).encode()).hexdigest()[:16]
     cache = cache_dir / f"broll_{key}.json" if cache_dir else None
     if cache is not None and cache.exists():
         log.info("broll: clip_%02d reusing a cached design", index)
         design = Design.model_validate_json(cache.read_text(encoding="utf-8"))
         moments = sanitize(design, duration, solo)
-        assemble(moments, work, duration=duration, fps=fps)
+        assemble(moments, work, duration=duration, fps=fps, accent=settings.broll_accent)
         if moments and not lint_errors(work, settings):
             return _render_and_summarise(moments, index, work, settings, fps)
 
@@ -467,7 +505,7 @@ def _make(plan: ClipPlan, index: int, clean: Path, words: list[Word], settings: 
         if not moments:
             log.warning("broll: clip_%02d: no usable moments", index)
             return None
-        assemble(moments, work, duration=duration, fps=fps)
+        assemble(moments, work, duration=duration, fps=fps, accent=settings.broll_accent)
         errors = lint_errors(work, settings)
         if not errors:
             break

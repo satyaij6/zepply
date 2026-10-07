@@ -121,7 +121,70 @@ system assembles them into one HyperFrames composition.
    - No `repeat: -1`; use a finite repeat that fits inside D.
    - Text and numbers that change (a count-up) must be driven by a tween's
      onUpdate writing `textContent`, inside the timeline.
-   - Do not create or remove DOM nodes; everything lives in your `html`.
+   - Do not create or remove DOM nodes, except a Hairline figure's SVG, built
+     once with HL's `solid`/`mk` while the function runs (never in a callback).
+
+## Hairline: the house style for objects
+
+When a moment needs an OBJECT or a SYSTEM — a stack, a vault, a conveyor,
+layers, a grid of pillars, a device, a building, a machine, a set of boxes —
+draw it as a Hairline figure: an isometric line drawing built from rounded
+solids in a single fine stroke, where one bright accent edge says where to
+look. It is the signature look of these clips; most clips should have at
+least one Hairline moment. Typography (big headline words) sits OUTSIDE the
+figure, never inside it.
+
+The engine is loaded as the global `HL`. Use only these:
+
+  Camera
+    Cam(azDeg, k, S)            camera: azimuth (keep 45), k = 0.5 (the 2:1 view), S = scale (1.4-2.2)
+    fit(C, points, cx, cy)      centres the box of [x, y, z] world points on (cx, cy); call once, before
+                                proj; pass the MOST EXTREME pose so nothing leaves the frame; use 200, 166
+    proj(C)                     returns P(x, y, z) -> [sx, sy]
+    facing(C)                   returns front(sample)
+  Rounded solids (world: x/y on the ground, z up; +x runs down-right, +y down-left;
+  the corner with the largest x + y is nearest the viewer)
+    rings(x0, y0, x1, y1, r, b) [ring, inner]: rounded footprint and its crease, inset b (0.6-2.2)
+    rrect(u0, v0, u1, v1, r, n) / circ(R, n)     rings for custom footprints
+    prism(P, front, ring, inner, z0, z1)         {sil, crease}: a solid from z0 to z1
+    ringAt(P, ring, z), run(ring, keep), hull(points), extremes(P, ring), fillet(points, radii, n)
+  Paths and numbers
+    poly(points), open(points), seg(a, b), clamp, lerp, rad, r2
+  Drawing
+    mk(tag, attrs, parent)      one svg element (the only way to make a node)
+    solid(parent)               {g, sil, cr}: a group with a silhouette path and a crease path
+    put(solid, paths)           writes prism()'s {sil, crease} into solid()'s {sil, cr}
+    flatDot(parent, C, r, cls)  a dot on the ground; cls "dot" | "dot m" | "dot off"
+    place(el, point)            moves a dot to [sx, sy]
+
+  Classes (the whole palette; set no colour, fill or stroke width yourself inside
+  the figure): sil (silhouette), hi (the bright accent edge — ONE place at a time),
+  lo (dim), nf (no fill), fo (fill only), dash (dashed guide), dot / dot m / dot off.
+
+How to use it in a moment:
+
+- In `html`: a background `<div style="position:absolute;inset:0;background:var(--hl-plate)">`
+  for a cutaway, and a figure box `<div id="mN-fig" data-hairline style="position:absolute;
+  ...;width:1000px;height:800px">` (5:4) holding `<svg id="mN-svg" viewBox="0 0 400 320"></svg>`.
+  Put headline words in their own elements outside the figure box.
+- In `animation`: build once (camera, fit, solids appended back to front: ascending
+  x + y, and bottom to top), keep every moving number in ONE plain object, and write
+  `draw()` as a pure function of that object that re-`put`s the paths and toggles
+  `hi`. Call `draw()` once, then animate the object with GSAP:
+  `tl.to(st, { lift: 1, duration: 1.4, ease: "expo.out", onUpdate: draw }, T + 0.3)`.
+  Never use HL's register, pointer, spring, stepS, tween or tset: the timeline is the
+  only clock.
+- Hairline's rules, for video: rest is designed, not flat (the first frame of the
+  figure is already a composition); stagger by distance (`clamp(st.t * 1.6 - i * 0.2, 0, 1)`
+  per item); clamp every lift, gap and lean; round every corner and draw less (a solid
+  is a silhouette and one crease, never twelve edges); the accent edge is the only
+  highlight; no words, numbers or icons inside the figure.
+
+A complete worked example (html in its header comment, then the animation body):
+
+```js
+{{HAIRLINE_EXAMPLE}}
+```
 
 Return only the structured result. Each moment: `id` ("m1", "m2", ... in time
 order), `start`, `end`, `layout`, `idea` (one sentence: what this shows and

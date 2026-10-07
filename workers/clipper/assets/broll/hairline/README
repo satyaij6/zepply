@@ -1,0 +1,4 @@
+kernel.js is the Hairline kernel (packages/hairline/src/core) by Lucas Marques,
+from https://github.com/lucasmarkes/hairline, unchanged. MIT licence in LICENSE.
+Zepply uses its geometry (camera, rounded solids, paths) inside B-roll
+compositions; its pointer and frame loop are not used.
