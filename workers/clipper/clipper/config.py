@@ -250,13 +250,36 @@ class Settings:
 
     # ---- split screen -------------------------------------------------
     # When both people are on camera, stacking them beats choosing one.
-    layout: str = "auto"               # auto | single | split
+    # "screen" is a screen recording: the screen on top, the webcam below. Auto
+    # picks it on its own only for a small, static, corner face -- see
+    # reframe/screen.py.
+    layout: str = "auto"               # auto | single | split | screen
     split_min_hold: float = 1.0        # both visible this long before splitting
     # Panel width is bounded by how far apart the locks are: two panels wider
     # than their separation would each contain BOTH faces, which looks like a
     # bug rather than a layout.
     split_panel_margin: float = 0.96   # of the available separation
     split_min_panel_width: float = 240.0
+
+    # ---- post kit -----------------------------------------------------
+    # Titles, caption, hashtags and cover text per clip, plus chapters for the
+    # long video. An extra, never a gate: see postkit.py.
+    postkit: bool = True
+    postkit_model: str = "claude-sonnet-5"
+    postkit_max_tokens: int = 16000
+    niche: str | None = None           # the creator's niche, if the app knows it
+
+    covers: bool = True                # a cover image per clip; see cover.py
+
+    # ---- punch-ins ----------------------------------------------------
+    # Hard zoom on emphasised words; see emphasis.py for how they are chosen.
+    punch_ins: bool = True
+    punch_zoom: float = 1.12           # past ~1.15 a 1080p source goes soft
+    punch_min_z: float = 1.3           # word loudness vs the clip's own words
+    punch_min_gap: float = 6.0         # seconds between punches
+    punch_min_hold: float = 0.8
+    punch_max_hold: float = 2.2
+    punch_max: int = 5
 
     # Output / captions
     out_width: int = 1080

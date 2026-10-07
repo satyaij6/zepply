@@ -67,7 +67,12 @@ def process(job: db.Job, cfg: Config, conn, storage: Storage) -> None:
         sys.executable, "-m", "clipper.cli", "--out", str(out_dir),
         "run", source, "--name", "clips", "--top", str(job.clip_count),
         "--style", job.style, "--caption-pos", job.caption_pos, "--device", cfg.device,
+        "--layout", job.layout if job.layout in ("auto", "screen", "single") else "auto",
     ]
+    if not job.effects:
+        cmd.append("--no-effects")
+    if job.niche:
+        cmd += ["--niche", job.niche]
     log.info("job %s: running clipper (%d clips, style %s)", job.id, job.clip_count, job.style)
     clips_dir = out_dir / "clips"
     with open(log_path, "w", encoding="utf-8") as log_file:
@@ -95,7 +100,8 @@ def process(job: db.Job, cfg: Config, conn, storage: Storage) -> None:
     db.report(conn, job.id, "uploading", 96)
     clips = [_upload_clip(entry, job, clips_dir, storage) for entry in manifest["clips"]]
     meta = json.loads((clips_dir / "work" / "meta.json").read_text(encoding="utf-8"))
-    db.finish(conn, job.id, clips, round(meta.get("duration") or 0) or None)
+    db.finish(conn, job.id, clips, round(meta.get("duration") or 0) or None,
+              manifest.get("source_kit"))
     log.info("job %s: done, %d clips", job.id, len(clips))
 
     # Sources and renders are in storage now; keep the disk for the next job
@@ -129,6 +135,7 @@ def _upload_clip(entry: dict, job: db.Job, clips_dir: Path, storage: Storage) ->
     rank = int(entry["index"])
     video = Path(entry["video_path"])
     srt = Path(entry["srt_path"]) if entry.get("srt_path") else None
+    cover = Path(entry["cover_path"]) if entry.get("cover_path") else None
     thumb = clips_dir / f"clip_{rank:02d}.jpg"
     _thumbnail(video, thumb)
 
@@ -147,6 +154,10 @@ def _upload_clip(entry: dict, job: db.Job, clips_dir: Path, storage: Storage) ->
         "video": storage.upload(RENDERS, f"{prefix}.mp4", video, "video/mp4"),
         "captions": storage.upload(RENDERS, f"{prefix}.srt", srt, "application/x-subrip") if srt and srt.exists() else None,
         "thumb": storage.upload(RENDERS, f"{prefix}.jpg", thumb, "image/jpeg") if thumb.exists() else None,
+        "cover": storage.upload(RENDERS, f"{prefix}_cover.jpg", cover, "image/jpeg") if cover and cover.exists() else None,
+        "titles": [t for t in entry.get("titles") or [] if isinstance(t, str)][:5],
+        "caption": entry.get("caption") or None,
+        "hashtags": [t for t in entry.get("hashtags") or [] if isinstance(t, str)][:10],
     }
 
 

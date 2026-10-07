@@ -60,7 +60,7 @@ def build_inputs(plan: ClipPlan, media_path: str,
 
 def build_filtergraph(
     plan: ClipPlan, settings: Settings, *, ass_name: str | None, fps: int = 30,
-    frame_plans: list | None = None,
+    frame_plans: list | None = None, zoom: str = "",
 ) -> tuple[str, str, str]:
     """
     Returns (filter_complex, video_label, audio_label).
@@ -126,6 +126,11 @@ def build_filtergraph(
 
     from . import reframe as _reframe
 
+    # Punch-ins go on the assembled picture, in assembled time, before the
+    # padding and captions -- a zoomed caption is a different size every cut.
+    if zoom:
+        parts.append(f"[{vlabel}]{zoom}[vzoom]")
+        vlabel = "vzoom"
     pad = _reframe.pad_to_canvas(settings)
     if pad:
         parts.append(f"[{vlabel}]{pad}[vpad]")
@@ -142,10 +147,11 @@ def build_filtergraph(
 def build_command(
     plan: ClipPlan, media_path: str, out_name: str, settings: Settings,
     *, ass_name: str | None, fps: int = 30,
-    frame_plans: list | None = None,
+    frame_plans: list | None = None, zoom: str = "",
 ) -> list[str]:
     graph, vlabel, alabel = build_filtergraph(
-        plan, settings, ass_name=ass_name, fps=fps, frame_plans=frame_plans
+        plan, settings, ass_name=ass_name, fps=fps, frame_plans=frame_plans,
+        zoom=zoom,
     )
     return [
         *build_inputs(plan, media_path, frame_plans),

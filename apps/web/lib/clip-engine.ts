@@ -22,6 +22,30 @@ export type ClipStyle = (typeof CLIP_STYLES)[number]["value"];
 
 export const CAPTION_POSITIONS = ["bottom", "center", "top"] as const;
 
+/** How the engine frames a 16:9 source for a vertical clip. */
+export const CLIP_LAYOUTS = [
+  { value: "auto", label: "Automatic", note: "Follows whoever is talking. Screen recordings are spotted for you." },
+  { value: "screen", label: "Screen recording", note: "Your screen on top, your camera below." },
+  { value: "single", label: "One person at a time", note: "Never splits the frame between two people." },
+] as const;
+export type ClipLayout = (typeof CLIP_LAYOUTS)[number]["value"];
+
+/** Post copy for the long video, written by the engine alongside the clips. */
+export type SourceKit = {
+  titles: string[];
+  description: string;
+  chapters: { start: number; title: string }[];
+};
+
+/** "1:05" or "1:02:05", the way YouTube reads chapter times. */
+export const clock = (seconds: number) => {
+  const s = Math.max(0, Math.floor(seconds));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const ss = String(s % 60).padStart(2, "0");
+  return h ? `${h}:${String(m).padStart(2, "0")}:${ss}` : `${m}:${ss}`;
+};
+
 export const CLIP_COUNT = { min: 1, max: 10, default: 5 } as const;
 
 /** Largest upload accepted. The Supabase project's own upload limit must be at least this. */

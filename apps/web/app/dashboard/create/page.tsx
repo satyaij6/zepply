@@ -59,10 +59,17 @@ export default function CreatePage() {
         </Link>
 
         <div className="grid gap-5">
-          {[
-            { icon: Scissors, title: "Long video to shorts", hint: "Turn a podcast or YouTube video into short clips" },
-            { icon: Film, title: "Raw clips to an edited reel", hint: "Upload your clips; we cut them into one reel" },
-          ].map(({ icon: Icon, title, hint }) => (
+          <Link href="/dashboard/create/clips" className="group flex items-start gap-4 rounded-3xl border border-app-line bg-app-card p-6 transition hover:border-zinc-300 hover:bg-white">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-app-side text-white">
+              <Scissors className="h-[18px] w-[18px]" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-[15px] font-semibold">Long video to shorts</p>
+              <p className="mt-1 text-sm text-app-muted">A podcast or YouTube video becomes clips, each with a cover, caption and hashtags</p>
+            </div>
+            <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-app-faint transition group-hover:translate-x-0.5 group-hover:text-app-ink" />
+          </Link>
+          {[{ icon: Film, title: "Raw clips to an edited reel", hint: "Upload your clips; we cut them into one reel" }].map(({ icon: Icon, title, hint }) => (
             <div key={title} className="flex items-start gap-4 rounded-3xl border border-app-line bg-app-card p-6">
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-app-bg text-app-muted">
                 <Icon className="h-[18px] w-[18px]" />
