@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { auth } from "@/lib/auth";
 import type { DayStat, HomeData } from "@/types/dashboard";
 
@@ -25,15 +24,13 @@ export async function GET(request: NextRequest) {
   }
 
   const session = await auth().catch(() => null);
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
   const days = emptyDays();
 
-  // Try database first
   try {
     const db = (await import("@/lib/prisma")).default;
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
 
     const accounts = await db.instagramAccount.findMany({
       where: { userId: session.user.id },
@@ -84,29 +81,8 @@ export async function GET(request: NextRequest) {
       onboarding: { connectInstagram: accounts.length > 0, createAutomation: automationCount > 0, firstLead: leadCount > 0 },
     };
     return NextResponse.json(data);
-  } catch {
-    console.warn("⚠️ Dashboard home: DB unreachable, using cookie fallback");
+  } catch (error) {
+    console.error("Dashboard home failed:", error);
+    return NextResponse.json({ error: "Database unavailable" }, { status: 503 });
   }
-
-  // Fallback: read the IG account from the zepply_user cookie set during OAuth callback
-  let igAccount: HomeData["igAccount"] = null;
-  const userCookie = (await cookies()).get("zepply_user");
-  if (userCookie) {
-    try {
-      const u = JSON.parse(userCookie.value);
-      if (u.igUsername) igAccount = { igUsername: u.igUsername, igProfilePic: u.profilePic || null, followerCount: u.followers || 0 };
-    } catch {
-      // Cookie parse failed
-    }
-  }
-
-  const data: HomeData = {
-    igAccount,
-    days,
-    totals: { leads: 0, automations: 0, activeAutomations: 0 },
-    automations: [],
-    recentLeads: [],
-    onboarding: { connectInstagram: !!igAccount, createAutomation: false, firstLead: false },
-  };
-  return NextResponse.json(data);
 }

@@ -56,7 +56,7 @@ export default function Hero() {
 
           <div className="mt-9 flex flex-wrap gap-4">
             <a
-              href="#waitlist"
+              href="/signup"
               className="inline-flex h-[58px] items-center gap-3 rounded-xl bg-electric px-9 text-lg font-medium text-white shadow-[0_0_32px_-6px_rgba(61,126,255,0.7)] ring-1 ring-inset ring-white/20 transition hover:bg-electric-bright"
             >
               Start free now <ArrowRight className="h-5 w-5" />

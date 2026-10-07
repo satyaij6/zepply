@@ -81,11 +81,32 @@ export default function LandingNavbar() {
           ))}
         </div>
 
+        {/* Log in, for people who already have an account */}
+        <a
+          href="/login"
+          style={{
+            textDecoration: "none",
+            fontFamily: "'Poppins', sans-serif",
+            fontWeight: 400,
+            fontSize: 14,
+            color: "#A1A1AA",
+            padding: "6px 12px",
+            marginLeft: "auto",
+            marginRight: 8,
+            borderRadius: 8,
+            whiteSpace: "nowrap",
+            transition: "color 0.15s",
+          }}
+          onMouseEnter={e => (e.currentTarget.style.color = "#fff")}
+          onMouseLeave={e => (e.currentTarget.style.color = "#A1A1AA")}
+        >
+          Log in
+        </a>
+
         {/* CTA */}
         <a
           href="#waitlist"
           style={{
-            marginLeft: "auto",
             textDecoration: "none",
             fontFamily: "'Poppins', sans-serif",
             fontWeight: 500,
