@@ -15,7 +15,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
     where: { id, userId },
     select: {
       id: true, title: true, sourceKind: true, sourceUrl: true, language: true, clipCount: true, style: true,
-      captionPos: true, layout: true, effects: true, sourceKit: true,
+      captionPos: true, layout: true, effects: true, broll: true, sourceKit: true,
       status: true, stage: true, progress: true, error: true, sourceSeconds: true,
       createdAt: true, startedAt: true, finishedAt: true,
       clips: { orderBy: { rank: "asc" } },

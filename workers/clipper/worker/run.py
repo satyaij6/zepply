@@ -73,6 +73,10 @@ def process(job: db.Job, cfg: Config, conn, storage: Storage) -> None:
         cmd.append("--no-effects")
     if job.niche:
         cmd += ["--niche", job.niche]
+    if job.broll:
+        cmd.append("--broll")
+        if job.accent and re.fullmatch(r"#[0-9a-fA-F]{6}", job.accent):
+            cmd += ["--accent", job.accent]
     log.info("job %s: running clipper (%d clips, style %s)", job.id, job.clip_count, job.style)
     clips_dir = out_dir / "clips"
     with open(log_path, "w", encoding="utf-8") as log_file:

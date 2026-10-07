@@ -21,8 +21,15 @@ import { active, ago, stageText, type JobRow } from "./types";
 type Upload = { name: string; size: number; progress: number; path: string | null; error: string | null };
 
 const OPTIONS_KEY = "zepply.clips.options";
-type Options = { clipCount: number; style: ClipStyle; captionPos: (typeof CAPTION_POSITIONS)[number]; layout: ClipLayout; effects: boolean };
-const DEFAULTS: Options = { clipCount: CLIP_COUNT.default, style: "clean", captionPos: "bottom", layout: "auto", effects: true };
+type Options = {
+  clipCount: number;
+  style: ClipStyle;
+  captionPos: (typeof CAPTION_POSITIONS)[number];
+  layout: ClipLayout;
+  effects: boolean;
+  broll: boolean;
+};
+const DEFAULTS: Options = { clipCount: CLIP_COUNT.default, style: "clean", captionPos: "bottom", layout: "auto", effects: true, broll: false };
 
 const size = (bytes: number) => (bytes >= 1024 ** 3 ? `${(bytes / 1024 ** 3).toFixed(1)} GB` : `${Math.max(1, Math.round(bytes / 1024 ** 2))} MB`);
 
@@ -363,19 +370,18 @@ export function ClipsHome() {
             </div>
           </Field>
 
-          <label className="flex cursor-pointer items-center justify-between gap-4 rounded-2xl border border-app-line bg-white p-4">
-            <span>
-              <span className="block text-[15px] font-semibold">Zoom on key moments</span>
-              <span className="mt-0.5 block text-sm text-app-muted">A quick punch-in when the speaker hits a word hard.</span>
-            </span>
-            <input type="checkbox" checked={options.effects} onChange={(e) => set("effects", e.target.checked)} className="peer sr-only" />
-            <span
-              aria-hidden
-              className={`relative h-6 w-11 shrink-0 rounded-full transition ${options.effects ? "bg-app-ink" : "bg-zinc-300"} after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow after:transition ${
-                options.effects ? "after:translate-x-5" : ""
-              } peer-focus-visible:ring-2 peer-focus-visible:ring-app-ink peer-focus-visible:ring-offset-2`}
-            />
-          </label>
+          <Toggle
+            checked={options.broll}
+            onChange={(v) => set("broll", v)}
+            title="Story visuals"
+            hint="Motion graphics that show what's being said, designed for each clip. Adds a few minutes per clip."
+          />
+          <Toggle
+            checked={options.effects}
+            onChange={(v) => set("effects", v)}
+            title="Zoom on key moments"
+            hint="A quick punch-in when the speaker hits a word hard."
+          />
         </section>
       </div>
 
@@ -431,6 +437,24 @@ export function ClipsHome() {
         )}
       </section>
     </div>
+  );
+}
+
+function Toggle({ checked, onChange, title, hint }: { checked: boolean; onChange: (v: boolean) => void; title: string; hint: string }) {
+  return (
+    <label className="flex cursor-pointer items-center justify-between gap-4 rounded-2xl border border-app-line bg-white p-4">
+      <span>
+        <span className="block text-[15px] font-semibold">{title}</span>
+        <span className="mt-0.5 block text-sm text-app-muted">{hint}</span>
+      </span>
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="peer sr-only" />
+      <span
+        aria-hidden
+        className={`relative h-6 w-11 shrink-0 rounded-full transition ${checked ? "bg-app-ink" : "bg-zinc-300"} after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow after:transition ${
+          checked ? "after:translate-x-5" : ""
+        } peer-focus-visible:ring-2 peer-focus-visible:ring-app-ink peer-focus-visible:ring-offset-2`}
+      />
+    </label>
   );
 }
 

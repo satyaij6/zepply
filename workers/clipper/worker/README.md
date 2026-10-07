@@ -27,6 +27,11 @@ web app ──► ClipJob (QUEUED) ──► worker claims it ──► clipper 
 - **Screen recordings** (job option `layout`: `auto`, `screen` or `single`): the screen on top and the
   webcam below. `auto` picks it only for a small, still face in a corner. See `clipper/reframe/screen.py`.
 
+- **Story visuals** (job option `broll`, off by default): Claude designs 3-6 motion-graphics moments per
+  clip that show what's being said, and HyperFrames renders them over the clip; captions are burned on
+  last. Needs Node 22+ (for `npx hyperframes`, which downloads its own Chrome) and adds a design call
+  plus a browser render per clip. If anything fails the clip ships without them. See `clipper/broll.py`.
+
 ## Run it on your machine
 
 1. Set up the clipper first (see `../SETUP.md`): Python 3.11+, ffmpeg with libass, and the keys.

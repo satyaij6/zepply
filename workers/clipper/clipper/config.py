@@ -271,6 +271,20 @@ class Settings:
 
     covers: bool = True                # a cover image per clip; see cover.py
 
+    # ---- storytelling B-roll -------------------------------------------
+    # Motion-graphics moments Claude designs per clip, rendered by HyperFrames.
+    # Off unless asked for: it costs a design call and a browser render per
+    # clip. See broll.py.
+    broll: bool = False
+    broll_model: str = "claude-opus-5-5"
+    broll_effort: str = "high"         # design quality is the point of this stage
+    broll_max_tokens: int = 64000
+    broll_accent: str | None = None    # brand accent, e.g. "#FF5A1F"
+    broll_render_workers: int = 2      # Chrome processes, ~256 MB each
+    broll_render_timeout: int = 1800   # seconds
+    broll_keep_work: bool = False      # keep the HyperFrames project for review
+    hyperframes_version: str = "0.8.140"
+
     # ---- punch-ins ----------------------------------------------------
     # Hard zoom on emphasised words; see emphasis.py for how they are chosen.
     punch_ins: bool = True
