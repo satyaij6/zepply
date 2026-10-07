@@ -47,6 +47,20 @@ export async function objectExists(bucket: string, path: string) {
   return !!data?.length;
 }
 
+/** Saves bytes from the server (e.g. images imported from Instagram), replacing any file at that path. */
+export async function uploadObject(bucket: string, path: string, body: ArrayBuffer | Buffer, contentType: string) {
+  await ensureBucket(bucket);
+  const { error } = await storage().from(bucket).upload(path, body, { contentType, upsert: true });
+  if (error) throw error;
+}
+
+/** The bytes of a stored file, or null if it's missing. */
+export async function downloadObject(bucket: string, path: string): Promise<Buffer | null> {
+  const { data, error } = await storage().from(bucket).download(path);
+  if (error || !data) return null;
+  return Buffer.from(await data.arrayBuffer());
+}
+
 /** Signed read URLs keyed by object path. Missing paths are simply absent. */
 export async function signedUrls(bucket: string, paths: (string | null | undefined)[], expiresIn = 3600) {
   const wanted = [...new Set(paths.filter((p): p is string => !!p))];

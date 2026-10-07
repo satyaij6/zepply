@@ -7,7 +7,7 @@ export const metadata = { title: "Log in · Zepply" };
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const { error } = await searchParams;
   const session = await auth();
-  if (session?.user?.id && !error) redirect("/dashboard");
+  if (session?.user?.id && !error) redirect("/start");
 
   return <AuthScreen mode="login" error={error} />;
 }

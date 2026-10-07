@@ -6,6 +6,7 @@ import {
   exchangeCodeForToken,
   getLongLivedToken,
   findInstagramAccount,
+  IG_RETURN_COOKIE,
 } from "@/lib/instagram";
 
 /*
@@ -30,6 +31,10 @@ export async function GET(request: NextRequest) {
 
   const session = await auth();
   const signedInId = session?.user?.id ?? null;
+  // Where a signed-in person goes next: back into onboarding if they came from there
+  const back = returnPath(request);
+  const done = (error?: string) =>
+    error ? (back ? `${back}?error=${error}` : `/connected?error=${error}`) : back ?? "/connected";
 
   try {
     // Code → short-lived token → long-lived (60-day) token → the Instagram account behind it
@@ -46,7 +51,7 @@ export async function GET(request: NextRequest) {
     if (signedInId) {
       const me = await prisma.user.findUnique({ where: { id: signedInId }, select: { id: true } });
       if (!me) return goTo(request, "/login?error=account_missing");
-      if (owner && owner.userId !== me.id) return goTo(request, "/connected?error=instagram_in_use");
+      if (owner && owner.userId !== me.id) return goTo(request, done("instagram_in_use"));
       userId = me.id;
     } else {
       if (!owner) return goTo(request, "/signup?error=signup_first");
@@ -78,16 +83,23 @@ export async function GET(request: NextRequest) {
       await signIn("instagram", { token: createLoginToken(userId), redirect: false });
       return goTo(request, "/dashboard");
     }
-    return goTo(request, "/connected");
-  } catch (error: any) {
-    console.error("Instagram callback failed:", error?.message || error);
-    return goTo(request, signedInId ? "/connected?error=callback_failed" : "/login?error=callback_failed");
+    return goTo(request, done());
+  } catch (error) {
+    console.error("Instagram callback failed:", error instanceof Error ? error.message : error);
+    return goTo(request, signedInId ? done("callback_failed") : "/login?error=callback_failed");
   }
+}
+
+/** The in-app path saved by /api/instagram/connect?next=…, if it's one of ours. */
+function returnPath(request: NextRequest) {
+  const path = request.cookies.get(IG_RETURN_COOKIE)?.value;
+  return path && path.startsWith("/") && !path.startsWith("//") ? path : null;
 }
 
 /** Redirects within the app, clearing the cookie older versions kept the Instagram token in. */
 function goTo(request: NextRequest, path: string) {
   const response = NextResponse.redirect(new URL(path, request.url));
   response.cookies.delete("zepply_user");
+  response.cookies.delete(IG_RETURN_COOKIE);
   return response;
 }

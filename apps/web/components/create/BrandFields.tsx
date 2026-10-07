@@ -31,7 +31,7 @@ export const EMPTY_BRAND: Brand = {
 };
 
 /** Uploads one image (shrunk first). In demo mode the file stays in the browser. */
-async function uploadImage(kind: "logo" | "photo", file: File, demo: boolean): Promise<{ media: Media; blob: Blob }> {
+export async function uploadImage(kind: "logo" | "photo", file: File, demo = false): Promise<{ media: Media; blob: Blob }> {
   if (!IMAGE_TYPES.includes(file.type as (typeof IMAGE_TYPES)[number])) throw new Error("Use a JPG, PNG or WebP image");
   const blob = await shrinkImage(file, kind === "logo" ? 800 : 1600, kind === "logo");
   if (blob.size > MAX_IMAGE_BYTES) throw new Error(`Images can be up to ${MAX_IMAGE_BYTES / 1024 ** 2} MB`);
