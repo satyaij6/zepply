@@ -1,13 +1,37 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
-import { useEffect } from "react";
+import { Suspense, useEffect, useState } from "react";
+
+// Problems the Instagram callback can send back here (see app/api/instagram/callback/route.ts)
+const ERRORS: Record<string, { title: string; body: string }> = {
+  instagram_in_use: {
+    title: "That Instagram is already connected",
+    body: "This Instagram account is linked to a different Zepply account. Log in to that account, or disconnect Instagram there first.",
+  },
+  callback_failed: {
+    title: "Couldn't connect Instagram",
+    body: "We couldn't reach Instagram just now. Please try again in a moment.",
+  },
+};
+
+type IgAccount = { igUsername: string; igProfilePic: string | null };
 
 export default function ConnectedPage() {
-  const { data: session, status } = useSession();
+  return (
+    <Suspense fallback={null}>
+      <ConnectedCard />
+    </Suspense>
+  );
+}
+
+function ConnectedCard() {
+  const { status } = useSession();
   const router = useRouter();
+  const problem = ERRORS[useSearchParams().get("error") ?? ""];
+  const [account, setAccount] = useState<IgAccount | null>(null);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -15,10 +39,19 @@ export default function ConnectedPage() {
     }
   }, [status, router]);
 
+  // The session holds the person's Google name, so read the Instagram handle from their account
+  useEffect(() => {
+    if (status !== "authenticated" || problem) return;
+    fetch("/api/settings")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((user) => setAccount(user?.igAccounts?.[0] ?? null))
+      .catch(() => setAccount(null));
+  }, [status, problem]);
+
   if (status === "loading") return null;
 
-  const username = session?.user?.name;
-  const profilePic = session?.user?.image;
+  const username = account?.igUsername;
+  const profilePic = account?.igProfilePic;
 
   return (
     <div style={{
@@ -52,16 +85,23 @@ export default function ConnectedPage() {
           boxShadow: "0 4px 20px rgba(214,41,118,0.30)",
         }}>
           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="20 6 9 17 4 12" />
+            {problem ? (
+              <>
+                <line x1="12" y1="7" x2="12" y2="13" />
+                <line x1="12" y1="17" x2="12.01" y2="17" />
+              </>
+            ) : (
+              <polyline points="20 6 9 17 4 12" />
+            )}
           </svg>
         </div>
 
         <h2 style={{ fontSize: 22, fontWeight: 700, color: "#0d0d0d", margin: "0 0 8px" }}>
-          Instagram connected!
+          {problem ? problem.title : "Instagram connected!"}
         </h2>
 
         {/* Account chip */}
-        {username && (
+        {!problem && username && (
           <div style={{
             display: "inline-flex",
             alignItems: "center",
@@ -102,11 +142,11 @@ export default function ConnectedPage() {
         )}
 
         <p style={{ fontSize: 14, color: "#6b6b6b", margin: "16px 0 28px", lineHeight: 1.6 }}>
-          Zepply is now linked to your account and ready to auto-reply to your comments and DMs.
+          {problem ? problem.body : "Zepply is now linked to your account and ready to auto-reply to your comments and DMs."}
         </p>
 
         <button
-          onClick={() => router.push("/dashboard")}
+          onClick={() => router.push(problem ? "/api/instagram/connect" : "/dashboard")}
           style={{
             width: "100%",
             padding: "14px 24px",
@@ -123,7 +163,7 @@ export default function ConnectedPage() {
           onMouseEnter={e => (e.currentTarget.style.background = "#333")}
           onMouseLeave={e => (e.currentTarget.style.background = "#0d0d0d")}
         >
-          Go to your workspace
+          {problem ? "Try again" : "Go to your workspace"}
         </button>
       </div>
     </div>

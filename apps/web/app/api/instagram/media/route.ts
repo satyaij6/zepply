@@ -1,51 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { cookies } from "next/headers";
 
 const GRAPH_API = "https://graph.facebook.com/v21.0";
 
 // GET — Fetch user's recent Instagram posts/reels
 export async function GET(request: NextRequest) {
   const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-  // Get the access token — try database first, then cookie fallback
   let accessToken: string | null = null;
   let igUserId: string | null = null;
-
-  // Try database
   try {
     const prismaModule = await import("@/lib/prisma");
     const db = prismaModule.default;
-
-    if (session?.user?.id) {
-      const igAccount = await db.instagramAccount.findFirst({
-        where: { userId: session.user.id, isActive: true },
-        select: { accessToken: true, igUserId: true },
-      });
-
-      if (igAccount) {
-        accessToken = igAccount.accessToken;
-        igUserId = igAccount.igUserId;
-      }
-    }
-  } catch {
-    console.warn("⚠️ Media API: DB unreachable, using cookie fallback");
-  }
-
-  // Fallback: read from cookie
-  if (!accessToken) {
-    const cookieStore = await cookies();
-    const userCookie = cookieStore.get("zepply_user");
-
-    if (userCookie) {
-      try {
-        const userData = JSON.parse(userCookie.value);
-        accessToken = userData.accessToken;
-        igUserId = userData.igUserId;
-      } catch {
-        // Cookie parse failed
-      }
-    }
+    const igAccount = await db.instagramAccount.findFirst({
+      where: { userId: session.user.id, isActive: true },
+      select: { accessToken: true, igUserId: true },
+    });
+    accessToken = igAccount?.accessToken ?? null;
+    igUserId = igAccount?.igUserId ?? null;
+  } catch (error) {
+    console.error("Media API: database unavailable:", error);
+    return NextResponse.json({ error: "Database unavailable" }, { status: 503 });
   }
 
   if (!accessToken || !igUserId) {
