@@ -12,8 +12,15 @@
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.2",
     "@hookform/resolvers": "^5.2.2",
+    "@hyperframes/player": "0.8.134",
     "@prisma/client": "^6.0.0",
     "@supabase/supabase-js": "^2.103.3",
+    "@zepply/api-client": "workspace:*",
+    "@zepply/core": "workspace:*",
+    "@zepply/i18n": "workspace:*",
+    "@zepply/reels": "workspace:*",
+    "@zepply/tokens": "workspace:*",
+    "@zepply/types": "workspace:*",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "framer-motion": "^12.38.0",
@@ -28,12 +35,7 @@
     "recharts": "^3.8.1",
     "resend": "^6.12.0",
     "tailwind-merge": "^3.5.0",
-    "zod": "^4.3.6",
-    "@zepply/api-client": "workspace:*",
-    "@zepply/core": "workspace:*",
-    "@zepply/i18n": "workspace:*",
-    "@zepply/tokens": "workspace:*",
-    "@zepply/types": "workspace:*"
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

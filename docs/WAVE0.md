@@ -117,7 +117,7 @@ Each ticket lists: **goal → tasks → done when → depends on → rough estim
 - [x] Package renamed to `@zepply/web`; `apps/web/.env.example` lists every variable the app reads
 - [x] `next build` passes inside the monorepo (all 28 routes); dev server serves the home page
 - [ ] The older voice-agent app (`Desktop/Zepply - Copy`, Next.js 14: agents, calls, call campaigns, Razorpay billing) and its `voice-engine` stay outside the repo for now; port them as the Business Pro voice module in Wave 3 (B5)
-- [ ] Replace `prisma db push` in `apps/web/vercel.json` with Prisma migrations (see T-08)
+- [x] Replace `prisma db push` in `apps/web/vercel.json` with Prisma migrations (see T-08). Baseline is `0_init`; production must be marked with `prisma migrate resolve --applied 0_init` once, before the first deploy that runs `migrate deploy`
 - [ ] Set Vercel **Root Directory** to `apps/web` when this layout merges to `main`
 
 **Done when:** the web app builds and runs from `apps/web` with the same behaviour as before.
@@ -271,7 +271,7 @@ T-01 ─┬─ T-02 ── T-14
 | # | Decision | Recommendation (spec §12.2) | Final answer |
 |---|---|---|---|
 | OD1 | Repository layout | Monorepo (Turborepo + pnpm): apps/web, apps/mobile, shared packages; Python worker as its own package | |
-| OD2 | Job queue | BullMQ on Redis | |
+| OD2 | Job queue | BullMQ on Redis | Postgres for now: clip jobs are rows in `ClipJob`, claimed with `FOR UPDATE SKIP LOCKED` (6 Oct 2026). Move to BullMQ when more job types arrive |
 | OD3 | Image / video / voiceover vendors | Bake-off on product fidelity + Telugu text (F7 test set) before choosing | |
 | OD4 | WhatsApp access | Direct Cloud API unless onboarding speed needs a provider (BSP) | |
 | OD5 | Final pricing and credit prices | Validate with pilot users (F5) during Wave 1 | |

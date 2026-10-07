@@ -8,14 +8,14 @@ export const MAIN_NAV: NavItem[] = [
   { href: "/dashboard/triggers", label: "Automations", icon: Zap },
   { href: "/dashboard/leads", label: "Leads", icon: Users },
   { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3 },
+  { href: "/dashboard/create", label: "Create", icon: PenLine },
+  { href: "/dashboard/brand-kit", label: "Brand Kit", icon: Palette },
 ];
 
 /** Planned areas, shown disabled so the roadmap is visible without pretending they work. */
 export const SOON_NAV: Omit<NavItem, "href">[] = [
-  { label: "Create", icon: PenLine },
   { label: "Calendar", icon: CalendarDays },
   { label: "Inbox", icon: Inbox },
-  { label: "Brand Kit", icon: Palette },
 ];
 
 export const FOOTER_NAV: NavItem[] = [

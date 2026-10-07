@@ -1,0 +1,5 @@
+# The worker, on top of ../requirements.txt (the clipper's own dependencies).
+psycopg[binary]>=3.2     # the ClipJob queue in Postgres
+# clipper/reframe/detect.py imports cv2 but ../requirements.txt doesn't list it; the
+# headless build has no GUI dependencies, which suits servers and containers.
+opencv-python-headless>=4.9

@@ -1,0 +1,1355 @@
+<!doctype html>
+<html
+  lang="en"
+  data-composition-variables='[
+    {"id":"accent","type":"color","label":"Brand colour","default":"#3D7EFF"},
+    {"id":"brandName","type":"string","label":"Business name","default":"Brew House"},
+    {"id":"handle","type":"string","label":"Instagram handle","default":"@thebrewhouse.hyd"},
+    {"id":"logo","type":"string","label":"Logo URL","default":""},
+    {"id":"hookLine","type":"string","label":"Hook line","default":"Everyone is asking about *Brew House*."},
+    {"id":"comments","type":"string","label":"Customer comments (one per line)","default":"price?\nmenu please\nopen Sunday?\ndeliver to Kondapur?\nbrunch timings?"},
+    {"id":"customerName","type":"string","label":"Customer name","default":"Priya"},
+    {"id":"question","type":"string","label":"Customer question","default":"Price for the cold brew?"},
+    {"id":"reply","type":"string","label":"Your reply","default":"Hi Priya! Our cold brew is ₹220, and it is 10% off this week. Want me to keep one aside?"},
+    {"id":"replyChip","type":"string","label":"Reply badge","default":"Replied in 2s"},
+    {"id":"answerHeadline","type":"string","label":"Answer headline","default":"Every question, *answered*."},
+    {"id":"galleryTitle","type":"string","label":"Gallery title","default":"Fresh this week"},
+    {"id":"galleryHeadline","type":"string","label":"Gallery headline","default":"Made fresh, *every* morning."},
+    {"id":"photos","type":"string","label":"Photo URLs (one per line)","default":""},
+    {"id":"highlights","type":"string","label":"Highlights (value | label, one per line)","default":"7am – 11pm | Open every day\n10% off | Cold brew, this week\nKondapur | Free delivery nearby"},
+    {"id":"highlightsHeadline","type":"string","label":"Highlights headline","default":"The little things, *done right*."},
+    {"id":"tagline","type":"string","label":"Tagline (three words, one per line)","default":"Brew.\nSip.\nRepeat."},
+    {"id":"ctaLabel","type":"string","label":"Button text","default":"DM us to order"},
+    {"id":"ctaSub","type":"string","label":"Line under the name","default":"Kondapur, Hyderabad"}
+  ]'
+>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      @font-face {
+        font-family: "Inter Tight";
+        font-style: normal;
+        font-weight: 100 900;
+        font-display: block;
+        src: url("fonts/InterTight-Latin.woff2") format("woff2");
+      }
+      @font-face {
+        font-family: "Instrument Serif";
+        font-style: italic;
+        font-weight: 400;
+        font-display: block;
+        src: url("fonts/InstrumentSerif-Italic.woff2") format("woff2");
+      }
+      @font-face {
+        font-family: "Noto Sans Telugu";
+        font-style: normal;
+        font-weight: 100 900;
+        font-display: block;
+        src: url("fonts/NotoSansTelugu.woff2") format("woff2");
+        unicode-range: U+0951-0952, U+0964-0965, U+0C00-0C7F, U+1CDA, U+1CF2, U+200C-200D, U+25CC;
+      }
+      @font-face {
+        font-family: "Noto Sans Devanagari";
+        font-style: normal;
+        font-weight: 100 900;
+        font-display: block;
+        src: url("fonts/NotoSansDevanagari.woff2") format("woff2");
+        unicode-range: U+0900-097F, U+1CD0-1CF9, U+200C-200D, U+20A8, U+20B9, U+20F0, U+25CC, U+A830-A839, U+A8E0-A8FF, U+11B00-11B09;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        overflow: hidden;
+        background: #000;
+      }
+      #root {
+        position: relative;
+        overflow: hidden;
+        background: #08080b;
+        font-family: "Inter Tight", "Noto Sans Telugu", "Noto Sans Devanagari", sans-serif;
+        color: #f4f4f5;
+        -webkit-font-smoothing: antialiased;
+        font-feature-settings: "tnum" 0;
+      }
+      #ground,
+      #stage {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+      }
+      #ground {
+        background: #08080b;
+      }
+      .glow {
+        position: absolute;
+        border-radius: 50%;
+        pointer-events: none;
+      }
+      .scene {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        visibility: hidden;
+      }
+      .abs {
+        position: absolute;
+      }
+
+      /* headline: display role, one accent word in serif italic */
+      .headline {
+        position: absolute;
+        font-weight: 600;
+        letter-spacing: -0.035em;
+        line-height: 1.04;
+        color: #f4f4f5;
+      }
+      .headline .w {
+        display: inline-block;
+        white-space: pre;
+      }
+      .serif {
+        font-family: "Instrument Serif", "Noto Sans Telugu", "Noto Sans Devanagari", serif;
+        font-style: italic;
+        font-weight: 400;
+        letter-spacing: -0.01em;
+        color: var(--silver);
+      }
+
+      /* silver paper product card */
+      .card {
+        position: absolute;
+        background: linear-gradient(180deg, #f5f6fa 0%, #e9ebf3 100%);
+        border: 1px solid #d9dce6;
+        border-radius: 34px;
+        box-shadow:
+          0 2px 0 rgba(255, 255, 255, 0.6) inset,
+          0 40px 80px -30px rgba(0, 0, 0, 0.7),
+          0 12px 30px -10px rgba(0, 0, 0, 0.45);
+        color: #0f1020;
+        overflow: hidden;
+      }
+
+      /* the phone */
+      #phone {
+        position: absolute;
+        border-radius: 56px;
+        background: #101015;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        overflow: hidden;
+        box-shadow: 0 50px 120px -40px rgba(0, 0, 0, 0.9);
+      }
+      #phone .screen {
+        position: absolute;
+        inset: 10px;
+        border-radius: 46px;
+        overflow: hidden;
+        background: radial-gradient(120% 70% at 50% 100%, var(--accent-deep) 0%, #0b0b12 60%);
+      }
+      #phone .island {
+        position: absolute;
+        top: 22px;
+        left: 50%;
+        width: 32%;
+        height: 30px;
+        margin-left: -16%;
+        border-radius: 20px;
+        background: #000;
+      }
+      #phone .date {
+        position: absolute;
+        width: 100%;
+        text-align: center;
+        font-weight: 500;
+        color: rgba(244, 244, 245, 0.75);
+      }
+      #phone .time {
+        position: absolute;
+        width: 100%;
+        text-align: center;
+        font-weight: 600;
+        letter-spacing: -0.04em;
+        color: #f4f4f5;
+      }
+      #phone .notif {
+        position: absolute;
+        border-radius: 26px;
+        background: rgba(40, 40, 52, 0.72);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        display: flex;
+        align-items: center;
+      }
+      #phone .notif .app {
+        flex: none;
+        border-radius: 12px;
+        background: var(--accent);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      #phone .notif .txt {
+        flex: 1;
+        min-width: 0;
+        line-height: 1.25;
+      }
+      #phone .notif .t1 {
+        font-weight: 600;
+        color: #f4f4f5;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      #phone .notif .t2 {
+        color: rgba(244, 244, 245, 0.82);
+      }
+      #phone .badge {
+        position: absolute;
+        border-radius: 999px;
+        background: #ff3b5c;
+        color: #fff;
+        font-weight: 700;
+        text-align: center;
+        font-variant-numeric: tabular-nums;
+      }
+      #phone .dim {
+        position: absolute;
+        inset: 0;
+        background: #101015;
+      }
+
+      .bubble {
+        position: absolute;
+        display: flex;
+        align-items: center;
+        border-radius: 999px;
+        background: #f5f6fa;
+        color: #0f1020;
+        font-weight: 500;
+        white-space: nowrap;
+        box-shadow: 0 14px 30px -12px rgba(0, 0, 0, 0.6);
+      }
+      .bubble .av {
+        flex: none;
+        border-radius: 50%;
+        color: #fff;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .ghost {
+        position: absolute;
+        border-radius: 999px;
+        background: #2a2a34;
+      }
+
+      /* DM */
+      .dm-head {
+        display: flex;
+        align-items: center;
+        border-bottom: 1px solid #d9dce6;
+      }
+      .dm-av {
+        flex: none;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #d9773a, #c2416a);
+        color: #fff;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .dm-name {
+        font-weight: 650;
+        color: #0f1020;
+      }
+      .dm-sub {
+        color: #5c6070;
+      }
+      .msg {
+        position: absolute;
+        line-height: 1.32;
+        font-weight: 500;
+      }
+      .msg.in {
+        background: #ffffff;
+        border: 1px solid #d9dce6;
+        color: #0f1020;
+      }
+      .msg.out {
+        background: var(--accent);
+        color: var(--on-accent);
+      }
+      .typing {
+        position: absolute;
+        background: #ffffff;
+        border: 1px solid #d9dce6;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .typing i {
+        display: block;
+        border-radius: 50%;
+        background: #9aa0b2;
+      }
+      .chip {
+        position: absolute;
+        display: flex;
+        align-items: center;
+        border-radius: 999px;
+        background: #dff5ea;
+        color: #0c6b48;
+        font-weight: 600;
+        white-space: nowrap;
+      }
+      .dm-input {
+        position: absolute;
+        border-radius: 999px;
+        background: #ffffff;
+        border: 1px solid #d9dce6;
+        color: #6b7080;
+        display: flex;
+        align-items: center;
+      }
+
+      /* gallery */
+      .card-title {
+        position: absolute;
+        font-weight: 650;
+        color: #0f1020;
+        letter-spacing: -0.02em;
+        white-space: nowrap;
+      }
+      .card-title .dot {
+        display: inline-block;
+        border-radius: 50%;
+        background: var(--accent);
+        vertical-align: middle;
+      }
+      .cell {
+        position: absolute;
+        border-radius: 20px;
+        overflow: hidden;
+        background: #dfe2ec;
+      }
+      .cell img {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .cell .ph {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        color: var(--accent);
+        background: var(--accent-wash);
+      }
+
+      /* highlights */
+      .row {
+        position: absolute;
+        border-radius: 22px;
+        background: #ffffff;
+        border: 1px solid #d9dce6;
+      }
+      .row .bar {
+        position: absolute;
+        border-radius: 8px;
+        background: var(--accent);
+      }
+      .row .val {
+        position: absolute;
+        font-weight: 650;
+        letter-spacing: -0.03em;
+        color: #0f1020;
+        white-space: nowrap;
+      }
+      .row .lab {
+        position: absolute;
+        color: #5c6070;
+        white-space: nowrap;
+      }
+
+      /* tagline */
+      .word {
+        position: absolute;
+        font-weight: 650;
+        letter-spacing: -0.045em;
+        line-height: 1;
+        white-space: nowrap;
+        color: #f4f4f5;
+      }
+      .word.serif {
+        font-weight: 400;
+        letter-spacing: -0.01em;
+      }
+
+      /* CTA */
+      .logo-tile {
+        position: absolute;
+        border-radius: 44px;
+        overflow: hidden;
+        background: #ffffff;
+        box-shadow: 0 30px 70px -24px rgba(0, 0, 0, 0.8);
+      }
+      .logo-tile img {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .logo-tile .mono {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--accent);
+        color: var(--on-accent);
+        font-weight: 700;
+        letter-spacing: -0.04em;
+      }
+      .brand {
+        position: absolute;
+        font-weight: 700;
+        letter-spacing: -0.045em;
+        line-height: 1.15;
+        color: #f4f4f5;
+        white-space: nowrap;
+      }
+      .sub {
+        position: absolute;
+        color: #a1a1aa;
+        white-space: nowrap;
+      }
+      .btn {
+        position: absolute;
+        border-radius: 999px;
+        background: var(--accent);
+        color: var(--on-accent);
+        font-weight: 650;
+        white-space: nowrap;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 18px 40px -14px var(--accent-glow);
+      }
+      .ripple {
+        position: absolute;
+        border-radius: 50%;
+        border: 3px solid var(--accent-bright);
+      }
+
+      #shape {
+        position: absolute;
+        left: 0;
+        top: 0;
+        background: var(--accent);
+        color: var(--on-accent);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 500;
+        white-space: nowrap;
+        overflow: hidden;
+        visibility: hidden;
+        box-shadow: 0 0 60px var(--accent-glow);
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="30"
+      data-width="1080"
+      data-height="1920"
+      data-format="vertical"
+      data-length="standard"
+      style="width: 1080px; height: 1920px"
+    >
+      <div id="ground" class="clip" data-start="0" data-duration="30" data-track-index="0">
+        <div id="glow-a" class="glow"></div>
+        <div id="glow-b" class="glow"></div>
+      </div>
+      <div id="stage" class="clip" data-start="0" data-duration="30" data-track-index="1"></div>
+      <!-- AUDIO -->
+    </div>
+
+    <script>
+      (function () {
+        "use strict";
+
+        var root = document.getElementById("root");
+        var stage = document.getElementById("stage");
+        var FORMAT = root.getAttribute("data-format") || "vertical";
+        var LENGTH = root.getAttribute("data-length") || "standard";
+
+        // ------------------------------------------------------------------ timing
+        // Mirrors packages/reels/src/timing.mjs (the build step also reads that file
+        // for the audio cues). Keep both in step.
+        var SCENES = {
+          standard: [
+            ["hook", 0, 4],
+            ["answer", 4, 9.5],
+            ["gallery", 9.5, 15],
+            ["highlights", 15, 20],
+            ["tagline", 20, 24],
+            ["cta", 24, 30],
+          ],
+          short: [
+            ["hook", 0, 3],
+            ["answer", 3, 7.5],
+            ["tagline", 7.5, 11],
+            ["cta", 11, 15],
+          ],
+        }[LENGTH];
+
+        // ------------------------------------------------------------------ layout
+        var LAYOUTS = {
+          wide: {
+            W: 1920, H: 1080, pad: 140,
+            head: { x: 140, y: 540, w: 700, size: 92, maxH: 520, anchor: "middle" },
+            hookHead: { x: 900, y: 120, w: 880, size: 66, maxH: 170, anchor: "top" },
+            card: { x: 1000, y: 140, w: 780, h: 800 },
+            phone: { cx: 560, cy: 540, w: 400, h: 820 },
+            bubbleSize: 30,
+            comments: [[1180, 540], [1010, 380], [1520, 330], [1560, 640], [1060, 760]],
+            ghosts: [[1340, 330], [1730, 470], [880, 560], [1360, 830], [1730, 800], [1300, 430], [1720, 300], [900, 330]],
+            gridCols: 3, gridRows: 2,
+            tagStack: false, tagSize: 168,
+            cta: { cy: 500, logo: 200, brand: 120, sub: 40, btn: 40 },
+          },
+          vertical: {
+            W: 1080, H: 1920, pad: 90,
+            head: { x: 90, y: 250, w: 900, size: 100, maxH: 380, anchor: "top" },
+            hookHead: { x: 90, y: 250, w: 900, size: 92, maxH: 300, anchor: "top" },
+            card: { x: 90, y: 700, w: 900, h: 880 },
+            phone: { cx: 540, cy: 1110, w: 440, h: 900 },
+            bubbleSize: 36,
+            comments: [[780, 880], [290, 770], [800, 1190], [280, 1330], [770, 1480]],
+            ghosts: [[170, 1010], [920, 1030], [220, 1600], [900, 1640], [560, 640], [880, 720], [190, 660], [560, 1640]],
+            gridCols: 2, gridRows: 3,
+            tagStack: true, tagSize: 200,
+            cta: { cy: 930, logo: 220, brand: 120, sub: 44, btn: 44 },
+          },
+          portrait: {
+            W: 1080, H: 1350, pad: 80,
+            head: { x: 80, y: 110, w: 920, size: 80, maxH: 260, anchor: "top" },
+            hookHead: { x: 80, y: 100, w: 920, size: 70, maxH: 200, anchor: "top" },
+            card: { x: 80, y: 420, w: 920, h: 790 },
+            phone: { cx: 540, cy: 800, w: 340, h: 700 },
+            bubbleSize: 30,
+            comments: [[760, 650], [300, 560], [790, 900], [290, 1010], [760, 1130]],
+            ghosts: [[160, 760], [930, 780], [200, 1180], [920, 1230], [560, 400], [900, 480], [180, 420], [560, 1220]],
+            gridCols: 3, gridRows: 2,
+            tagStack: true, tagSize: 150,
+            cta: { cy: 620, logo: 190, brand: 104, sub: 38, btn: 38 },
+          },
+        };
+        var L = LAYOUTS[FORMAT] || LAYOUTS.vertical;
+
+        // ------------------------------------------------------------------ variables
+        function readVariables() {
+          var out = {};
+          try {
+            var decl = JSON.parse(document.documentElement.getAttribute("data-composition-variables") || "[]");
+            decl.forEach(function (d) {
+              out[d.id] = d.default;
+            });
+          } catch (e) {}
+          var over = null;
+          try {
+            if (window.__hyperframes && typeof window.__hyperframes.getVariables === "function") {
+              over = window.__hyperframes.getVariables();
+            }
+          } catch (e) {}
+          if (!over && window.__hfVariables) over = window.__hfVariables;
+          if (over) {
+            for (var k in over) {
+              if (over[k] !== undefined && over[k] !== null) out[k] = over[k];
+            }
+          }
+          return out;
+        }
+
+        function lines(s) {
+          return String(s || "")
+            .split(/\r?\n/)
+            .map(function (x) {
+              return x.trim();
+            })
+            .filter(Boolean);
+        }
+
+        // ------------------------------------------------------------------ colour
+        function hexToRgb(hex) {
+          var h = String(hex || "").replace("#", "");
+          if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+          var n = parseInt(h, 16);
+          if (isNaN(n) || h.length !== 6) return [61, 126, 255];
+          return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+        }
+        function rgba(c, a) {
+          return "rgba(" + c[0] + "," + c[1] + "," + c[2] + "," + a + ")";
+        }
+        function mix(a, b, t) {
+          return [0, 1, 2].map(function (i) {
+            return Math.round(a[i] + (b[i] - a[i]) * t);
+          });
+        }
+        function hex(c) {
+          return (
+            "#" +
+            c
+              .map(function (v) {
+                return ("0" + v.toString(16)).slice(-2);
+              })
+              .join("")
+          );
+        }
+        function luminance(c) {
+          var s = c.map(function (v) {
+            v /= 255;
+            return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+          });
+          return 0.2126 * s[0] + 0.7152 * s[1] + 0.0722 * s[2];
+        }
+
+        // ------------------------------------------------------------------ dom helpers
+        function el(tag, cls, parent, text) {
+          var e = document.createElement(tag);
+          if (cls) e.className = cls;
+          if (text !== undefined && text !== null) e.textContent = text;
+          (parent || stage).appendChild(e);
+          return e;
+        }
+        function css(e, o) {
+          for (var k in o) {
+            var v = o[k];
+            e.style[k] = typeof v === "number" && !/opacity|zIndex|fontWeight|lineHeight|flex/.test(k) ? v + "px" : v;
+          }
+          return e;
+        }
+        // Rect in canvas pixels, independent of any preview scaling (offset chain).
+        function rectOf(e) {
+          var x = 0, y = 0, n = e;
+          while (n && n !== root) {
+            x += n.offsetLeft;
+            y += n.offsetTop;
+            n = n.offsetParent;
+          }
+          return { x: x, y: y, w: e.offsetWidth, h: e.offsetHeight, cx: x + e.offsetWidth / 2, cy: y + e.offsetHeight / 2 };
+        }
+        function initial(s) {
+          var t = String(s || "").replace(/^@/, "").trim();
+          return t ? Array.from(t)[0].toUpperCase() : "Z";
+        }
+
+        // "Every question, *answered*." -> word spans, the starred part in the serif.
+        function richWords(parent, text) {
+          var parts = String(text || "").split("*");
+          var words = [];
+          parts.forEach(function (part, i) {
+            var serif = i % 2 === 1;
+            part.split(/(\s+)/).forEach(function (tok) {
+              if (!tok) return;
+              if (/^\s+$/.test(tok)) {
+                parent.appendChild(document.createTextNode(" "));
+                return;
+              }
+              var w = el("span", "w" + (serif ? " serif" : ""), parent, tok);
+              words.push(w);
+            });
+          });
+          return words;
+        }
+
+        function makeHeadline(parent, text, spec) {
+          var h = el("div", "headline", parent);
+          css(h, { left: spec.x, width: spec.w, fontSize: spec.size });
+          var words = richWords(h, text);
+          var size = spec.size;
+          for (var i = 0; i < 12 && h.offsetHeight > spec.maxH; i++) {
+            size = Math.round(size * 0.92);
+            h.style.fontSize = size + "px";
+          }
+          var top = spec.anchor === "middle" ? spec.y - h.offsetHeight / 2 : spec.y;
+          h.style.top = top + "px";
+          return { el: h, words: words };
+        }
+
+        // Shrink an element's font until it fits a box (single-line or wrapped).
+        function fitFont(e, maxW, maxH, start, min) {
+          var size = start;
+          e.style.fontSize = size + "px";
+          for (var i = 0; i < 30; i++) {
+            var okW = !maxW || e.scrollWidth <= maxW + 0.5;
+            var okH = !maxH || e.scrollHeight <= maxH + 0.5;
+            if ((okW && okH) || size <= min) break;
+            size = Math.max(min, Math.round(size * 0.94));
+            e.style.fontSize = size + "px";
+          }
+          return size;
+        }
+
+        // Deterministic pseudo-random (no Math.random in a seekable render).
+        var seed = 7;
+        function rnd() {
+          seed = (seed * 16807) % 2147483647;
+          return (seed - 1) / 2147483646;
+        }
+
+        // ------------------------------------------------------------------ build
+        function build() {
+          var V = readVariables();
+          var W = L.W, H = L.H;
+          var DUR = SCENES[SCENES.length - 1][2];
+
+          // colour system from the one brand colour
+          var A = hexToRgb(V.accent);
+          var lum = luminance(A);
+          var onAccent = lum > 0.5 ? "#0F1020" : "#FFFFFF";
+          var bright = mix(A, [255, 255, 255], 0.22);
+          var deep = mix(A, [8, 8, 11], 0.72);
+          var silver = mix([244, 244, 245], A, 0.28);
+          root.style.setProperty("--accent", hex(A));
+          root.style.setProperty("--accent-bright", hex(bright));
+          root.style.setProperty("--accent-deep", hex(deep));
+          root.style.setProperty("--accent-wash", hex(mix(A, [245, 246, 250], 0.85)));
+          root.style.setProperty("--accent-glow", rgba(A, 0.5));
+          root.style.setProperty("--on-accent", onAccent);
+          root.style.setProperty("--silver", hex(silver));
+
+          var glowA = document.getElementById("glow-a");
+          var glowB = document.getElementById("glow-b");
+          var G = Math.max(W, H) * 0.95;
+          css(glowA, {
+            width: G, height: G, left: W * 0.62 - G / 2, top: H * 0.5 - G / 2,
+            background: "radial-gradient(closest-side, " + rgba(deep, 0.95) + ", " + rgba(deep, 0.35) + " 55%, " + rgba(deep, 0) + ")",
+          });
+          css(glowB, {
+            width: G * 0.7, height: G * 0.7, left: W * 0.18 - G * 0.35, top: H * 0.15 - G * 0.35,
+            background: "radial-gradient(closest-side, " + rgba(deep, 0.5) + ", " + rgba(deep, 0) + ")",
+            opacity: 0.6,
+          });
+
+          var tl = gsap.timeline({ paused: true });
+          var shape = document.getElementById("shape") || el("div", "", stage);
+          shape.id = "shape";
+          css(shape, { zIndex: 50 });
+
+          // The shape is THE moving thing: it carries every handoff between scenes.
+          function shapeTo(at, dur, r, extra, ease) {
+            var o = {
+              x: r.cx - r.w / 2, y: r.cy - r.h / 2, width: r.w, height: r.h,
+              borderRadius: r.r !== undefined ? r.r : Math.min(r.w, r.h) / 2,
+              duration: dur, ease: ease || "expo.inOut",
+            };
+            for (var k in extra || {}) o[k] = extra[k];
+            tl.to(shape, o, at);
+          }
+          function shapeSet(at, r, extra) {
+            var o = {
+              x: r.cx - r.w / 2, y: r.cy - r.h / 2, width: r.w, height: r.h,
+              borderRadius: r.r !== undefined ? r.r : Math.min(r.w, r.h) / 2,
+              visibility: "visible",
+            };
+            for (var k in extra || {}) o[k] = extra[k];
+            tl.set(shape, o, at);
+          }
+          var shapeLabel = el("span", "", shape);
+
+          // one shared phone: the hook wakes it, the CTA returns it for the loop seam
+          var P = L.phone;
+          var phone = el("div", "", stage);
+          phone.id = "phone";
+          css(phone, { left: P.cx - P.w / 2, top: P.cy - P.h / 2, width: P.w, height: P.h, zIndex: 2 });
+          var screen = el("div", "screen", phone);
+          el("div", "island", screen);
+          var u = P.w / 400; // phone unit
+          var dateEl = css(el("div", "date", screen, "Monday, 6 October"), { top: 92 * u, fontSize: 17 * u });
+          var timeEl = css(el("div", "time", screen, "11:47"), { top: 124 * u, fontSize: 92 * u, lineHeight: 1 });
+          var notif = css(el("div", "notif", screen), {
+            left: 18 * u, right: 18 * u, top: 250 * u, height: 92 * u, padding: "0 " + 16 * u + "px", gap: 14 * u + "px",
+          });
+          notif.style.display = "flex";
+          var app = css(el("div", "app", notif), { width: 46 * u, height: 46 * u });
+          app.innerHTML =
+            '<svg width="' + 26 * u + '" height="' + 26 * u + '" viewBox="0 0 24 24" fill="none" stroke="' + onAccent +
+            '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>';
+          var ntxt = el("div", "txt", notif);
+          css(el("div", "t1", ntxt, V.handle || V.brandName), { fontSize: 17 * u });
+          var nCount = css(el("div", "t2", ntxt, "1 new message"), { fontSize: 16 * u });
+          var badge = css(el("div", "badge", screen, "1"), {
+            right: 10 * u, top: 238 * u, minWidth: 40 * u, height: 30 * u, lineHeight: 30 * u + "px", fontSize: 16 * u, padding: "0 " + 8 * u + "px", zIndex: 3,
+          });
+          var dim = el("div", "dim", phone);
+
+          var built = {};
+          SCENES.forEach(function (s, i) {
+            var c = el("div", "scene", stage);
+            c.id = "scene-" + s[0];
+            built[s[0]] = { el: c, start: s[1], end: s[2], len: s[2] - s[1], next: SCENES[i + 1] ? SCENES[i + 1][0] : null };
+            tl.set(c, { visibility: "visible" }, s[1]);
+            if (i < SCENES.length - 1) tl.set(c, { visibility: "hidden" }, s[2]);
+          });
+
+          // ============================================================ layout pass
+          // Build every scene's DOM first so each scene knows where the next one
+          // wants the shape (the handoff target), then write the motion.
+
+          // ---------- hook
+          var hook = built.hook;
+          var hookHead = makeHeadline(hook.el, V.hookLine, L.hookHead);
+          var comments = lines(V.comments).slice(0, 5);
+          while (comments.length < 5) comments.push(["price?", "menu please", "open today?", "location?", "timings?"][comments.length]);
+          var avColors = ["#4F5BD5", "#C2416A", "#B4641A", "#1F8A62", "#7446C9"];
+          var bubbles = comments.map(function (t, i) {
+            var b = el("div", "bubble", hook.el);
+            var bs = L.bubbleSize;
+            css(b, { fontSize: bs, height: bs * 2.1, padding: "0 " + bs * 0.75 + "px 0 " + bs * 0.3 + "px", gap: bs * 0.4 + "px", zIndex: 5 });
+            var av = css(el("div", "av", b, "ABCDEFGHJKLMNPRSTVY"[(i * 7) % 19]), { width: bs * 1.45, height: bs * 1.45, fontSize: bs * 0.62, background: avColors[i] });
+            av.style.display = "flex";
+            var label = el("span", "", b, t);
+            var pos = L.comments[i];
+            css(b, { left: pos[0] - b.offsetWidth / 2, top: pos[1] - b.offsetHeight / 2 });
+            return { el: b, label: label };
+          });
+          var ghosts = L.ghosts.map(function (pos) {
+            var gw = L.bubbleSize * (3.2 + rnd() * 3), gh = L.bubbleSize * 1.5;
+            var g = css(el("div", "ghost", hook.el), { left: pos[0] - gw / 2, top: pos[1] - gh / 2, width: gw, height: gh, zIndex: 1 });
+            return g;
+          });
+
+          // ---------- answer
+          var answer = built.answer;
+          var ans = {};
+          (function () {
+            var C = L.card;
+            var head = makeHeadline(answer.el, V.answerHeadline, L.head);
+            var card = css(el("div", "card", answer.el), { left: C.x, top: C.y, width: C.w, height: C.h, zIndex: 4 });
+            var s = C.w / 780; // card unit
+            var hd = css(el("div", "dm-head", card), { height: 104 * s, padding: "0 " + 28 * s + "px", gap: 16 * s + "px" });
+            hd.style.display = "flex";
+            css(el("div", "dm-av", hd, initial(V.customerName)), { width: 58 * s, height: 58 * s, fontSize: 26 * s }).style.display = "flex";
+            var who = el("div", "", hd);
+            css(el("div", "dm-name", who, V.customerName || "Customer"), { fontSize: 26 * s });
+            css(el("div", "dm-sub", who, (V.brandName || "") + " · Instagram"), { fontSize: 19 * s });
+            var pad = 30 * s, fs = 27 * s;
+            var maxW = C.w * 0.74;
+            var q = css(el("div", "msg in", card, V.question), {
+              left: pad, top: 104 * s + 46 * s, maxWidth: maxW, fontSize: fs, padding: 18 * s + "px " + 24 * s + "px",
+              borderRadius: 28 * s + "px " + 28 * s + "px " + 28 * s + "px 8px",
+            });
+            var replyTop = 104 * s + 46 * s + q.offsetHeight + 34 * s;
+            var r = css(el("div", "msg out", card, V.reply), {
+              right: pad, top: replyTop, maxWidth: maxW, fontSize: fs, padding: 18 * s + "px " + 24 * s + "px",
+              borderRadius: 28 * s + "px " + 28 * s + "px 8px " + 28 * s + "px",
+            });
+            // keep the thread inside the card: shrink the type if a long reply overflows
+            var limit = C.h - 120 * s - 70 * s;
+            for (var i = 0; i < 12 && replyTop + r.offsetHeight > limit; i++) {
+              fs *= 0.93;
+              q.style.fontSize = fs + "px";
+              r.style.fontSize = fs + "px";
+              replyTop = 104 * s + 46 * s + q.offsetHeight + 30 * s;
+              r.style.top = replyTop + "px";
+            }
+            var typing = css(el("div", "typing", card), {
+              right: pad, top: replyTop, width: 96 * s, height: 56 * s, gap: 8 * s + "px",
+              borderRadius: 28 * s + "px " + 28 * s + "px 8px " + 28 * s + "px",
+            });
+            typing.style.display = "flex";
+            var dots = [0, 1, 2].map(function () {
+              return css(el("i", "", typing), { width: 11 * s, height: 11 * s });
+            });
+            var chip = css(el("div", "chip", card), {
+              right: pad, top: replyTop + r.offsetHeight + 16 * s, height: 40 * s, padding: "0 " + 16 * s + "px", gap: 8 * s + "px", fontSize: 18 * s,
+            });
+            chip.style.display = "flex";
+            chip.innerHTML =
+              '<svg width="' + 18 * s + '" height="' + 18 * s + '" viewBox="0 0 24 24" fill="none" stroke="#0c6b48" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+            el("span", "", chip, V.replyChip || "Replied in 2s");
+            var input = css(el("div", "dm-input", card, "Message…"), {
+              left: pad, right: pad, bottom: 26 * s, height: 64 * s, padding: "0 " + 24 * s + "px", fontSize: 20 * s,
+            });
+            input.style.display = "flex";
+            ans = { head: head, card: card, q: q, r: r, typing: typing, dots: dots, chip: chip };
+          })();
+
+          // ---------- gallery
+          var gal = null;
+          if (built.gallery) {
+            gal = (function () {
+              var C = L.card;
+              var sc = built.gallery;
+              var head = makeHeadline(sc.el, V.galleryHeadline, L.head);
+              var card = css(el("div", "card", sc.el), { left: C.x, top: C.y, width: C.w, height: C.h, zIndex: 4 });
+              var s = C.w / 780;
+              var title = css(el("div", "card-title", card), { left: 32 * s, top: 34 * s, fontSize: 30 * s });
+              css(el("span", "dot", title), { width: 12 * s, height: 12 * s, marginRight: 12 * s + "px" });
+              title.appendChild(document.createTextNode(V.galleryTitle || ""));
+              var photos = lines(V.photos);
+              var gx = 28 * s, gy = 104 * s, gap = 16 * s;
+              var cw = (C.w - gx * 2 - gap * (L.gridCols - 1)) / L.gridCols;
+              var ch = (C.h - gy - 28 * s - gap * (L.gridRows - 1)) / L.gridRows;
+              var cells = [];
+              for (var rr = 0; rr < L.gridRows; rr++) {
+                for (var cc = 0; cc < L.gridCols; cc++) {
+                  var k = cells.length;
+                  var cell = css(el("div", "cell", card), { left: gx + cc * (cw + gap), top: gy + rr * (ch + gap), width: cw, height: ch });
+                  var inner;
+                  if (photos.length) {
+                    inner = el("img", "", cell);
+                    inner.src = photos[k % photos.length];
+                    inner.alt = "";
+                  } else {
+                    inner = css(el("div", "ph", cell, initial(V.brandName)), { fontSize: Math.min(cw, ch) * 0.34 });
+                    inner.style.display = "flex";
+                  }
+                  cells.push({ el: cell, inner: inner });
+                }
+              }
+              return { head: head, card: card, cells: cells };
+            })();
+          }
+
+          // ---------- highlights
+          var hil = null;
+          if (built.highlights) {
+            hil = (function () {
+              var C = L.card;
+              var sc = built.highlights;
+              var head = makeHeadline(sc.el, V.highlightsHeadline, L.head);
+              var items = lines(V.highlights)
+                .map(function (l) {
+                  var p = l.split("|");
+                  return { v: (p[0] || "").trim(), l: (p.slice(1).join("|") || "").trim() };
+                })
+                .filter(function (x) {
+                  return x.v;
+                })
+                .slice(0, 3);
+              while (items.length < 3) items.push({ v: V.brandName || "", l: V.ctaSub || "" });
+              var s = C.w / 780;
+              var cardH = Math.min(C.h, 3 * 190 * s + 2 * 22 * s + 2 * 32 * s);
+              var top = C.y + (C.h - cardH) / 2;
+              var card = css(el("div", "card", sc.el), { left: C.x, top: top, width: C.w, height: cardH, zIndex: 4 });
+              var rowH = (cardH - 2 * 32 * s - 2 * 22 * s) / 3;
+              var rows = items.map(function (it, i) {
+                var row = css(el("div", "row", card), { left: 32 * s, right: 32 * s, top: 32 * s + i * (rowH + 22 * s), height: rowH });
+                var bar = css(el("div", "bar", row), { left: 26 * s, top: 26 * s, width: 12 * s, height: rowH - 52 * s });
+                var val = css(el("div", "val", row, it.v), { left: 66 * s, top: rowH * 0.18, fontSize: 58 * s });
+                fitFont(val, C.w - 64 * s - 100 * s, 0, 58 * s, 26);
+                var lab = css(el("div", "lab", row, it.l), { left: 68 * s, top: rowH * 0.18 + val.offsetHeight + 4 * s, fontSize: 24 * s });
+                fitFont(lab, C.w - 64 * s - 100 * s, 0, 24 * s, 14);
+                return { row: row, bar: bar, val: val, lab: lab };
+              });
+              return { head: head, card: card, rows: rows };
+            })();
+          }
+
+          // ---------- tagline
+          var tag = (function () {
+            var sc = built.tagline;
+            var ws = lines(V.tagline);
+            if (ws.length < 3) {
+              var sp = String(V.tagline || "").split(/\s+/).filter(Boolean);
+              ws = sp.length >= 3 ? sp.slice(0, 3) : ["Create.", "Reply.", "Grow."];
+            }
+            ws = ws.slice(0, 3);
+            var maxW = W - L.pad * 2;
+            var size = L.tagSize;
+            var els = ws.map(function (t, i) {
+              var w = el("div", "word" + (i === 2 ? " serif" : ""), sc.el, t);
+              w.style.fontSize = (i === 2 ? size * 1.1 : size) + "px";
+              return w;
+            });
+            function totalW() {
+              return els.reduce(function (a, e) {
+                return a + e.offsetWidth;
+              }, 0) + (els.length - 1) * size * 0.32;
+            }
+            for (var i = 0; i < 30; i++) {
+              var tooWide = L.tagStack
+                ? els.some(function (e) {
+                    return e.offsetWidth > maxW;
+                  })
+                : totalW() > maxW;
+              if (!tooWide) break;
+              size = Math.round(size * 0.94);
+              els.forEach(function (e, j) {
+                e.style.fontSize = (j === 2 ? size * 1.1 : size) + "px";
+              });
+            }
+            var lineGap = size * 0.18;
+            var underline = [];
+            if (L.tagStack) {
+              var stepY = size * 1.12 + lineGap + 24;
+              var blockH = stepY * 2 + els[2].offsetHeight;
+              var y0 = H / 2 - blockH / 2;
+              els.forEach(function (e, j) {
+                css(e, { left: (W - e.offsetWidth) / 2, top: y0 + j * stepY });
+              });
+            } else {
+              var x = (W - totalW()) / 2;
+              els.forEach(function (e) {
+                css(e, { left: x, top: H / 2 - size * 0.6 });
+                x += e.offsetWidth + size * 0.32;
+              });
+            }
+            els.forEach(function (e) {
+              var r = rectOf(e);
+              underline.push({ cx: r.cx, cy: r.y + r.h + 22, w: r.w * 0.86, h: 14, r: 7 });
+            });
+            return { els: els, size: size, underline: underline };
+          })();
+
+          // ---------- cta
+          var cta = (function () {
+            var sc = built.cta;
+            var S = L.cta;
+            var tile = css(el("div", "logo-tile", sc.el), { width: S.logo, height: S.logo, left: (W - S.logo) / 2, top: 0 });
+            if (V.logo) {
+              var img = el("img", "", tile);
+              img.src = V.logo;
+              img.alt = "";
+            } else {
+              css(el("div", "mono", tile, initial(V.brandName)), { fontSize: S.logo * 0.5 }).style.display = "flex";
+            }
+            var brand = el("div", "brand", sc.el, V.brandName || "");
+            fitFont(brand, W - L.pad * 2, 0, S.brand, 40);
+            var sub = el("div", "sub", sc.el, V.ctaSub || V.handle || "");
+            fitFont(sub, W - L.pad * 2, 0, S.sub, 18);
+            var btn = el("div", "btn", sc.el, V.ctaLabel || "DM us");
+            css(btn, { fontSize: S.btn, height: S.btn * 2.3, padding: "0 " + S.btn * 1.3 + "px" });
+            btn.style.display = "flex";
+            fitFont(btn, W - L.pad * 2, 0, S.btn, 20);
+            // stack the column around S.cy
+            var gap1 = S.logo * 0.22, gap2 = S.brand * 0.32, gap3 = S.sub * 1.3;
+            var total = S.logo + gap1 + brand.offsetHeight + gap2 + sub.offsetHeight + gap3 + btn.offsetHeight;
+            var y = S.cy - total / 2;
+            tile.style.top = y + "px";
+            y += S.logo + gap1;
+            css(brand, { top: y, left: (W - brand.offsetWidth) / 2 });
+            y += brand.offsetHeight + gap2;
+            css(sub, { top: y, left: (W - sub.offsetWidth) / 2 });
+            y += sub.offsetHeight + gap3;
+            css(btn, { left: (W - btn.offsetWidth) / 2, top: y });
+            var ripple = css(el("div", "ripple", sc.el), { left: 0, top: 0, width: 40, height: 40, opacity: 0 });
+            var cursor = el("div", "abs", sc.el);
+            var cs = S.btn * 1.4;
+            cursor.innerHTML =
+              '<svg width="' + cs + '" height="' + cs * 1.25 + '" viewBox="0 0 20 25"><path d="M2 1.5v19.2l5.1-4.6 3.2 7.2 3.3-1.5-3.2-7h6.9z" fill="#fff" stroke="#0F1020" stroke-width="1.4" stroke-linejoin="round"/></svg>';
+            css(cursor, { left: 0, top: 0, zIndex: 8 });
+            return { tile: tile, brand: brand, sub: sub, btn: btn, ripple: ripple, cursor: cursor };
+          })();
+
+          // handoff targets: where each scene wants the shape when it begins
+          function entryOf(id) {
+            if (id === "answer") {
+              var q = rectOf(ans.q);
+              return { cx: q.cx, cy: q.cy, w: q.w, h: q.h, r: 28 };
+            }
+            if (id === "gallery") {
+              var c0 = rectOf(gal.cells[0].el);
+              return { cx: c0.cx, cy: c0.cy, w: 96, h: 96, r: 18 };
+            }
+            if (id === "highlights") {
+              var b = rectOf(hil.rows[0].bar);
+              return { cx: b.cx, cy: b.cy, w: b.w, h: b.h, r: 8 };
+            }
+            if (id === "tagline") {
+              return { cx: W / 2, cy: H / 2, w: Math.min(520, W * 0.48), h: 88, r: 44 };
+            }
+            if (id === "cta") {
+              var t = rectOf(cta.tile);
+              return { cx: t.cx, cy: t.cy, w: 120, h: 120, r: 60 };
+            }
+            return null;
+          }
+
+          // ============================================================ motion
+          var POP = "back.out(1.6)";
+
+          function riseWords(words, at, stagger) {
+            tl.fromTo(
+              words,
+              { y: 46, opacity: 0 },
+              { y: 0, opacity: 1, duration: 0.7, ease: "power3.out", stagger: stagger || 0.045 },
+              at
+            );
+          }
+          function dropAway(targets, at) {
+            tl.to(targets, { y: 70, opacity: 0, duration: 0.42, ease: "power2.in" }, at);
+          }
+
+          // ---------- hook
+          (function () {
+            var t0 = hook.start, len = hook.len, k = len / 4;
+            tl.fromTo(dim, { opacity: 1 }, { opacity: 0, duration: 0.5, ease: "power2.out" }, t0 + 0.2 * k);
+            tl.fromTo([dateEl, timeEl], { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6, ease: "power3.out", stagger: 0.06 }, t0 + 0.28 * k);
+            tl.fromTo(notif, { y: -40, opacity: 0, scale: 0.92 }, { y: 0, opacity: 1, scale: 1, duration: 0.55, ease: POP }, t0 + 0.5 * k);
+            tl.fromTo(badge, { scale: 0 }, { scale: 1, duration: 0.4, ease: POP }, t0 + 0.55 * k);
+            var counter = { n: 1 };
+            tl.to(
+              counter,
+              {
+                n: 99, duration: 1.4 * k, ease: "power2.in",
+                onUpdate: function () {
+                  var n = Math.round(counter.n);
+                  badge.textContent = n >= 99 ? "99+" : String(n);
+                  nCount.textContent = (n >= 99 ? "99+" : n) + " new messages";
+                },
+              },
+              t0 + 0.6 * k
+            );
+            bubbles.forEach(function (b, i) {
+              var r = rectOf(b.el);
+              var dx = (P.cx - r.cx) * 0.35, dy = (P.cy - r.cy) * 0.35;
+              tl.fromTo(b.el, { x: dx, y: dy, scale: 0.4, opacity: 0 }, { x: 0, y: 0, scale: 1, opacity: 1, duration: 0.55, ease: POP }, t0 + (0.6 + i * 0.28) * k);
+            });
+            ghosts.forEach(function (g, j) {
+              tl.fromTo(g, { scale: 0.3, opacity: 0 }, { scale: 1, opacity: 0.8, duration: 0.4, ease: "power3.out" }, t0 + (1.6 + j * 0.1) * k);
+            });
+            riseWords(hookHead.words, t0 + (len < 4 ? 1.05 : 1.9 * k));
+
+            // exit: everything falls away except the first comment, which becomes THE shape
+            var ex = t0 + len - 0.8;
+            var b0 = bubbles[0];
+            var r0 = rectOf(b0.el);
+            shapeSet(ex, { cx: r0.cx, cy: r0.cy, w: r0.w, h: r0.h, r: r0.h / 2 }, {
+              backgroundColor: "#F5F6FA", color: "#0F1020", fontSize: L.bubbleSize, boxShadow: "0 0 0px rgba(0,0,0,0)",
+            });
+            shapeLabel.textContent = comments[0];
+            tl.set(b0.el, { opacity: 0 }, ex);
+            tl.to(shape, { backgroundColor: hex(A), color: onAccent, boxShadow: "0 0 60px " + rgba(A, 0.5), duration: 0.35, ease: "power2.out" }, ex + 0.05);
+            dropAway(bubbles.slice(1).map(function (b) { return b.el; }).concat(ghosts), ex);
+            dropAway(hookHead.el, ex - 0.05);
+            tl.to(phone, { y: 120, opacity: 0, scale: 0.94, duration: 0.6, ease: "power2.in" }, ex);
+            var nxt = entryOf(hook.next);
+            shapeTo(ex + 0.35, 0.95, nxt, {}, "power3.inOut");
+          })();
+
+          // ---------- answer
+          (function () {
+            var sc = answer, t0 = sc.start, len = sc.len, k = len / 5.5;
+            var qr = rectOf(ans.q);
+            var cr = rectOf(ans.card);
+            tl.fromTo(
+              ans.card,
+              { scale: 0.18, opacity: 0, transformOrigin: (qr.cx - cr.x) + "px " + (qr.cy - cr.y) + "px" },
+              { scale: 1, opacity: 1, duration: 0.75, ease: "expo.out" },
+              t0 + 0.2
+            );
+            tl.fromTo(ans.q, { opacity: 0 }, { opacity: 1, duration: 0.01 }, t0 + 0.75);
+            tl.to(shape, { backgroundColor: "#FFFFFF", color: "#0F1020", boxShadow: "0 0 0px rgba(0,0,0,0)", duration: 0.3, ease: "power2.out" }, t0 + 0.4);
+            tl.to(shapeLabel, { opacity: 0, duration: 0.2 }, t0 + 0.4);
+            tl.set(shape, { visibility: "hidden" }, t0 + 0.76);
+            riseWords(ans.head.words, t0 + 1.0 * k);
+            tl.fromTo(ans.typing, { scale: 0.5, opacity: 0, transformOrigin: "100% 100%" }, { scale: 1, opacity: 1, duration: 0.35, ease: POP }, t0 + 1.3 * k);
+            ans.dots.forEach(function (d, i) {
+              for (var c = 0; c < 3; c++) {
+                var at = t0 + 1.45 * k + c * 0.3 + i * 0.1;
+                tl.to(d, { y: -7, duration: 0.15, ease: "power1.out" }, at);
+                tl.to(d, { y: 0, duration: 0.15, ease: "power1.in" }, at + 0.15);
+              }
+            });
+            tl.to(ans.typing, { scale: 0.6, opacity: 0, duration: 0.2, ease: "power2.in" }, t0 + 2.3 * k);
+            tl.fromTo(ans.r, { scale: 0.4, opacity: 0, transformOrigin: "100% 100%" }, { scale: 1, opacity: 1, duration: 0.6, ease: "expo.out" }, t0 + 2.35 * k);
+            tl.fromTo(ans.chip, { scale: 0, opacity: 0, transformOrigin: "100% 50%" }, { scale: 1, opacity: 1, duration: 0.45, ease: POP }, t0 + 3.8 * k);
+
+            var ex = t0 + len - 0.65;
+            var rr = rectOf(ans.r);
+            shapeSet(ex, { cx: rr.cx, cy: rr.cy, w: rr.w, h: rr.h, r: 28 }, { backgroundColor: hex(A), color: onAccent, boxShadow: "0 0 60px " + rgba(A, 0.5) });
+            tl.set(shapeLabel, { opacity: 0 }, ex);
+            tl.set(ans.r, { opacity: 0 }, ex);
+            dropAway([ans.card, ans.head.el], ex + 0.05);
+            shapeTo(ex + 0.05, 0.6, entryOf(sc.next), {}, "expo.inOut");
+          })();
+
+          // ---------- gallery
+          if (gal) {
+            (function () {
+              var sc = built.gallery, t0 = sc.start, len = sc.len;
+              var c0 = rectOf(gal.cells[0].el);
+              var cr = rectOf(gal.card);
+              tl.fromTo(
+                gal.card,
+                { scale: 0.12, opacity: 0, transformOrigin: (c0.cx - cr.x) + "px " + (c0.cy - cr.y) + "px" },
+                { scale: 1, opacity: 1, duration: 0.8, ease: "expo.out" },
+                t0 + 0.1
+              );
+              shapeTo(t0 + 0.25, 0.6, { cx: c0.cx, cy: c0.cy, w: c0.w, h: c0.h, r: 20 }, {}, "expo.out");
+              tl.set(shape, { visibility: "hidden" }, t0 + 0.95);
+              tl.fromTo(gal.cells[0].inner, { clipPath: "inset(100% 0 0 0)" }, { clipPath: "inset(0% 0 0 0)", duration: 0.45, ease: "power3.out" }, t0 + 0.85);
+              gal.cells.forEach(function (c, i) {
+                if (i === 0) return;
+                var at = t0 + 0.9 + i * 0.33;
+                tl.fromTo(c.el, { scale: 0.82, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.5, ease: POP }, at);
+                tl.fromTo(c.inner, { scale: 1.18 }, { scale: 1, duration: 1.2, ease: "power3.out" }, at);
+              });
+              riseWords(gal.head.words, t0 + 2.0);
+
+              var ex = t0 + len - 0.75;
+              var last = gal.cells[gal.cells.length - 1];
+              var lr = rectOf(last.el);
+              shapeSet(ex, { cx: lr.cx, cy: lr.cy, w: lr.w, h: lr.h, r: 20 }, { backgroundColor: hex(A), opacity: 0 });
+              tl.to(shape, { opacity: 1, duration: 0.15 }, ex);
+              tl.set(last.el, { opacity: 0 }, ex + 0.15);
+              dropAway([gal.card, gal.head.el], ex + 0.12);
+              shapeTo(ex + 0.18, 0.57, entryOf(sc.next), {}, "expo.inOut");
+            })();
+          }
+
+          // ---------- highlights
+          if (hil) {
+            (function () {
+              var sc = built.highlights, t0 = sc.start, len = sc.len;
+              var cr = rectOf(hil.card);
+              var b0 = rectOf(hil.rows[0].bar);
+              tl.fromTo(
+                hil.card,
+                { scale: 0.2, opacity: 0, transformOrigin: (b0.cx - cr.x) + "px " + (b0.cy - cr.y) + "px" },
+                { scale: 1, opacity: 1, duration: 0.75, ease: "expo.out" },
+                t0 + 0.1
+              );
+              tl.set(shape, { visibility: "hidden" }, t0 + 0.6);
+              hil.rows.forEach(function (r, i) {
+                var at = t0 + 0.55 + i * 0.75;
+                tl.fromTo(r.row, { x: 60, opacity: 0 }, { x: 0, opacity: 1, duration: 0.55, ease: "power3.out" }, at);
+                if (i > 0) tl.fromTo(r.bar, { scaleY: 0, transformOrigin: "50% 100%" }, { scaleY: 1, duration: 0.5, ease: "expo.out" }, at + 0.1);
+                tl.fromTo([r.val, r.lab], { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, ease: "power3.out", stagger: 0.08 }, at + 0.12);
+              });
+              riseWords(hil.head.words, t0 + 1.6);
+
+              var ex = t0 + len - 0.7;
+              var lb = rectOf(hil.rows[2].bar);
+              shapeSet(ex, { cx: lb.cx, cy: lb.cy, w: lb.w, h: lb.h, r: 8 }, { backgroundColor: hex(A) });
+              tl.set(hil.rows[2].bar, { opacity: 0 }, ex);
+              dropAway([hil.card, hil.head.el], ex + 0.1);
+              shapeTo(ex + 0.12, 0.58, entryOf(sc.next), {}, "expo.inOut");
+            })();
+          }
+
+          // ---------- tagline: one word per beat, the shape underlines each
+          (function () {
+            var sc = built.tagline, t0 = sc.start, len = sc.len;
+            var beats = [t0 + 0.5, t0 + 1.5, t0 + 2.5];
+            tag.els.forEach(function (w, i) {
+              var b = beats[i];
+              var u = tag.underline[i];
+              shapeTo(b - 0.12, 0.42, u, {}, "expo.out");
+              tl.fromTo(w, { opacity: 0 }, { opacity: 1, duration: 0.05, ease: "none" }, b);
+              if (i === 1) {
+                tl.fromTo(w, { y: 120, clipPath: "inset(0 0 100% 0)" }, { y: 0, clipPath: "inset(0 0 0% 0)", duration: 0.45, ease: "expo.out" }, b);
+              } else {
+                tl.fromTo(w, { scale: i === 0 ? 1.5 : 1.25, filter: "blur(14px)", rotation: i === 2 ? -6 : 0 }, { scale: 1, filter: "blur(0px)", rotation: 0, duration: 0.55, ease: "power4.out" }, b);
+              }
+              // the words already landed take the hit
+              tag.els.slice(0, i).forEach(function (prev) {
+                tl.to(prev, { y: L.tagStack ? -10 : 0, x: L.tagStack ? 0 : -14, duration: 0.07, ease: "power2.out" }, b);
+                tl.to(prev, { y: 0, x: 0, duration: 0.45, ease: "power3.out" }, b + 0.07);
+              });
+            });
+            tl.to(shape, { backgroundColor: hex(bright), duration: 0.25 }, beats[2]);
+            var ex = t0 + len - 0.6;
+            var target = entryOf(sc.next);
+            tag.els.forEach(function (w) {
+              var r = rectOf(w);
+              tl.to(w, { x: target.cx - r.cx, y: target.cy - r.cy, scale: 0.05, filter: "blur(8px)", duration: 0.42, ease: "power3.inOut" }, ex);
+              tl.to(w, { opacity: 0, duration: 0.3, ease: "power2.in" }, ex + 0.1);
+            });
+            shapeTo(ex, 0.55, target, { backgroundColor: hex(A) }, "back.out(1.3)");
+          })();
+
+          // ---------- cta: the shape blooms into the logo, then the loop seam
+          (function () {
+            var sc = built.cta, t0 = sc.start, len = sc.len, k = len / 6;
+            var tr = rectOf(cta.tile);
+            shapeTo(t0, 0.45, { cx: tr.cx, cy: tr.cy, w: tr.w, h: tr.h, r: 44 }, {}, "expo.out");
+            tl.fromTo(cta.tile, { opacity: 0, scale: 0.9 }, { opacity: 1, scale: 1, duration: 0.4, ease: POP }, t0 + 0.32);
+            tl.set(shape, { visibility: "hidden" }, t0 + 0.6);
+            tl.fromTo(cta.brand, { y: 50, opacity: 0, clipPath: "inset(0 0 100% 0)" }, { y: 0, opacity: 1, clipPath: "inset(0 0 0% 0)", duration: 0.7, ease: "expo.out" }, t0 + 0.8 * k);
+            tl.fromTo(cta.sub, { y: 24, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6, ease: "power3.out" }, t0 + 1.1 * k);
+            tl.fromTo(cta.btn, { scale: 0.4, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.55, ease: POP }, t0 + 1.8 * k);
+            var br = rectOf(cta.btn);
+            var click = t0 + 2.6 * k;
+            tl.fromTo(
+              cta.cursor,
+              { x: br.cx + W * 0.22, y: br.cy + H * 0.12, opacity: 0 },
+              { x: br.cx + br.w * 0.18, y: br.cy + 4, opacity: 1, duration: 0.7, ease: "power3.out" },
+              click - 0.75
+            );
+            tl.to(cta.cursor, { scale: 0.86, duration: 0.08, ease: "power2.out" }, click);
+            tl.to(cta.cursor, { scale: 1, duration: 0.25, ease: "power2.out" }, click + 0.08);
+            tl.to(cta.btn, { scale: 0.95, duration: 0.08, ease: "power2.out" }, click);
+            tl.to(cta.btn, { scale: 1, duration: 0.5, ease: "elastic.out(1, 0.5)" }, click + 0.08);
+            tl.fromTo(
+              cta.ripple,
+              { x: br.cx + br.w * 0.18 - 20, y: br.cy - 16, scale: 0.4, opacity: 0.9 },
+              { scale: 4.5, opacity: 0, duration: 0.7, ease: "power2.out", immediateRender: false },
+              click + 0.02
+            );
+            tl.to(cta.cursor, { opacity: 0, duration: 0.4 }, click + 0.9);
+
+            // recede to black, then the dim phone returns where the hook found it
+            var out = t0 + len - 1.4;
+            tl.to([cta.tile, cta.brand, cta.sub, cta.btn], { scale: 0.96, opacity: 0, duration: 0.8, ease: "power2.inOut" }, out);
+            tl.set(phone, { y: 0, scale: 1 }, out);
+            tl.fromTo(phone, { opacity: 0 }, { opacity: 1, duration: 0.6, ease: "power2.out", immediateRender: false }, out + 0.7);
+            tl.set(dim, { opacity: 1 }, out + 0.7);
+            tl.set([dateEl, timeEl, notif, badge], { opacity: 0 }, out + 0.7);
+          })();
+
+          // glow drifts once across the whole film (one slow tween, no loops)
+          tl.fromTo(glowA, { x: 0, y: 0 }, { x: -W * 0.08, y: H * 0.04, duration: DUR, ease: "none" }, 0);
+
+          window.__timelines["main"] = tl;
+          if (typeof window.__hfForceTimelineRebind === "function") window.__hfForceTimelineRebind();
+        }
+
+        if (document.fonts && document.fonts.ready) {
+          var V0 = readVariables();
+          var allText = Object.keys(V0)
+            .map(function (k) {
+              return typeof V0[k] === "string" ? V0[k] : "";
+            })
+            .join(" ") + " 0123456789 Message…";
+          Promise.all([
+            document.fonts.load('600 40px "Inter Tight"', allText),
+            document.fonts.load('italic 400 40px "Instrument Serif"', allText),
+            document.fonts.load('600 40px "Noto Sans Telugu"', allText),
+            document.fonts.load('600 40px "Noto Sans Devanagari"', allText),
+          ])
+            .catch(function () {})
+            .then(function () {
+              return document.fonts.ready;
+            })
+            .then(build);
+        } else {
+          build();
+        }
+      })();
+    </script>
+  </body>
+</html>
