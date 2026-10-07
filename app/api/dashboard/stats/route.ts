@@ -1,19 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { cookies } from "next/headers";
 
 // GET — Dashboard stats for today
 export async function GET(request: NextRequest) {
   const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-  // Try database first
   try {
     const prismaModule = await import("@/lib/prisma");
     const db = prismaModule.default;
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
 
     const igAccounts = await db.instagramAccount.findMany({
       where: { userId: session.user.id },
@@ -70,43 +67,8 @@ export async function GET(request: NextRequest) {
         upgradePro: false,
       },
     });
-  } catch (dbError) {
-    console.warn("⚠️ Dashboard stats: DB unreachable, using cookie fallback");
+  } catch (error) {
+    console.error("Dashboard stats failed:", error);
+    return NextResponse.json({ error: "Database unavailable" }, { status: 503 });
   }
-
-  // Fallback: read IG account data from the zepply_user cookie
-  const cookieStore = await cookies();
-  const userCookie = cookieStore.get("zepply_user");
-
-  let igAccount = null;
-  if (userCookie) {
-    try {
-      const userData = JSON.parse(userCookie.value);
-      igAccount = {
-        id: userData.igUserId || "local_ig",
-        igUsername: userData.igUsername,
-        igProfilePic: userData.profilePic || null,
-        followerCount: userData.followers || 0,
-      };
-    } catch {
-      // Cookie parse failed
-    }
-  }
-
-  return NextResponse.json({
-    stats: {
-      triggersToday: 0,
-      totalLeads: 0,
-      dmsToday: 0,
-      activeTriggers: 0,
-    },
-    igAccount,
-    recentActivity: [],
-    onboarding: {
-      connectInstagram: !!igAccount,
-      createTrigger: false,
-      getFirstLead: false,
-      upgradePro: false,
-    },
-  });
 }

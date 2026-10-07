@@ -1,47 +1,32 @@
 import NextAuth from "next-auth";
 import type { NextAuthConfig } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+import { verifyLoginToken } from "@/lib/login-token";
 
 export const authConfig: NextAuthConfig = {
   providers: [
+    // Only the Instagram callback can use this: it needs a server-signed token (lib/login-token.ts),
+    // never a user id from the browser.
     CredentialsProvider({
       id: "instagram",
       name: "Instagram",
-      credentials: {
-        userId: { label: "User ID", type: "text" },
-        username: { label: "Username", type: "text" },
-        igUserId: { label: "IG User ID", type: "text" },
-        profilePic: { label: "Profile Pic", type: "text" },
-      },
+      credentials: { token: { type: "text" } },
       async authorize(credentials) {
-        if (!credentials?.userId) return null;
+        const userId = typeof credentials?.token === "string" ? verifyLoginToken(credentials.token) : null;
+        if (!userId) return null;
 
-        // First try database lookup
-        try {
-          const prisma = (await import("@/lib/prisma")).default;
-          const user = await prisma.user.findUnique({
-            where: { id: credentials.userId as string },
-            include: { igAccounts: true },
-          });
+        const prisma = (await import("@/lib/prisma")).default;
+        const user = await prisma.user.findUnique({
+          where: { id: userId },
+          include: { igAccounts: true },
+        });
+        if (!user) return null;
 
-          if (user) {
-            return {
-              id: user.id,
-              name: user.igAccounts?.[0]?.igUsername || user.name,
-              email: user.email,
-              image: user.igAccounts?.[0]?.igProfilePic || null,
-            };
-          }
-        } catch (dbError) {
-          console.warn("⚠️ DB unreachable in authorize, using credential data");
-        }
-
-        // Fallback: return user from the credentials passed directly
-        // This works when database is unreachable (local dev)
         return {
-          id: credentials.userId as string,
-          name: (credentials.username as string) || "User",
-          image: (credentials.profilePic as string) || null,
+          id: user.id,
+          name: user.igAccounts?.[0]?.igUsername || user.name,
+          email: user.email,
+          image: user.igAccounts?.[0]?.igProfilePic || null,
         };
       },
     }),
