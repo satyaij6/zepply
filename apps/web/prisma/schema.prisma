@@ -9,17 +9,33 @@ datasource db {
 }
 
 model User {
-  id              String             @id @default(cuid())
-  email           String?            @unique
+  id              String   @id @default(cuid())
+  email           String?  @unique
   name            String?
-  plan            Plan               @default(FREE)
+  plan            Plan     @default(FREE)
   /// Allowlist for the video engine until credits exist; set to true by hand for pilot users.
-  canCreateVideos Boolean            @default(false)
-  createdAt       DateTime           @default(now())
-  igAccounts      InstagramAccount[]
-  clipJobs        ClipJob[]
-  brandKit        BrandKit?
-  reelJobs        ReelJob[]
+  canCreateVideos Boolean  @default(false)
+  createdAt       DateTime @default(now())
+
+  // Onboarding (/start). Answers shape the brand kit and the content Zepply writes.
+  /// creator | business
+  path           String?
+  /// Languages to create in, e.g. ["en", "te"] (values from lib/reels/options LANGUAGES)
+  languages      String[]  @default([])
+  /// Creator: what they create (personal-brand, education…). Business: business type (cafe, clinic…).
+  niche          String?
+  /// What they want from Zepply, e.g. ["grow-followers", "more-leads"]
+  goals          String[]  @default([])
+  /// Last onboarding step reached (1-6), so a refresh or the Instagram round trip resumes there
+  onboardingStep Int       @default(0)
+  /// Set when onboarding is finished or skipped; until then sign-in lands on /start
+  onboardedAt    DateTime?
+
+  igAccounts InstagramAccount[]
+  clipJobs   ClipJob[]
+  drafts     Draft[]
+  brandKit   BrandKit?
+  reelJobs   ReelJob[]
 }
 
 model InstagramAccount {
@@ -191,8 +207,49 @@ model BrandKit {
   /// Object paths in the "brand-assets" bucket, in display order (up to 6)
   photoPaths String[] @default([])
   language   String   @default("en")
+  /// Up to four brand colours, #RRGGBB, most important first (accent mirrors the first)
+  colors     String[] @default([])
+  /// Headline typeface for designs (values from lib/onboarding/options FONTS)
+  font       String?
+  /// How the brand sounds, e.g. ["Warm", "Conversational"]
+  voice      String[] @default([])
+  /// Who the brand is for, in one or two sentences
+  audience   String?
+  /// What the brand sells or offers, e.g. ["Coffee", "Coworking"]
+  offerings  String[] @default([])
+  /// What the brand posts about, e.g. ["Behind the scenes", "Offers & events"]
+  themes     String[] @default([])
   createdAt  DateTime @default(now())
   updatedAt  DateTime @default(now()) @updatedAt
+}
+
+/// A post Zepply wrote for the user, not yet published (onboarding samples, later the content calendar).
+model Draft {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind       DraftKind
+  /// Short on-image text
+  headline   String
+  caption    String
+  hashtags   String[]  @default([])
+  /// Object paths in the "brand-assets" bucket, in slide order
+  photoPaths String[]  @default([])
+  /// Carousel: a short label per slide after the cover
+  slides     String[]  @default([])
+  language   String    @default("en")
+  /// Where it came from: onboarding | create
+  source     String    @default("onboarding")
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @default(now()) @updatedAt
+
+  @@index([userId, createdAt])
+}
+
+enum DraftKind {
+  POST
+  CAROUSEL
+  REEL
 }
 
 /// One promo reel render. A single "Generate" makes one job per chosen format, sharing a groupId.

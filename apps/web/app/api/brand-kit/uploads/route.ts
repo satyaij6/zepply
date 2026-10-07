@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { requireCreator } from "@/lib/clip-access";
+import { requireUserId } from "@/lib/auth-helpers";
 import { IMAGE_TYPES, MAX_IMAGE_BYTES, REEL_BUCKETS } from "@/lib/reels/options";
 import { createUpload, signedUrls } from "@/lib/storage";
 
@@ -15,7 +15,7 @@ const body = z.object({
 
 // POST — A signed URL the browser uploads a logo or photo to, plus a read URL for the preview
 export async function POST(request: NextRequest) {
-  const { userId, error } = await requireCreator();
+  const { userId, error } = await requireUserId();
   if (error) return error;
 
   const parsed = body.safeParse(await request.json().catch(() => null));

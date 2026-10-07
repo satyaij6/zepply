@@ -46,7 +46,8 @@ export default function AuthScreen({ mode, error }: { mode: Mode; error?: string
 
   async function continueWithGoogle() {
     "use server";
-    await signIn("google", { redirectTo: "/dashboard" });
+    // /start sends people who have finished onboarding on to the dashboard
+    await signIn("google", { redirectTo: "/start" });
   }
 
   return (

@@ -10,7 +10,7 @@ export type { ReelScript, ScriptInput };
 
 const MODEL = process.env.REELS_SCRIPT_MODEL || "claude-sonnet-5-5";
 
-const LANGUAGE_RULES: Record<ReelLanguage, string> = {
+export const LANGUAGE_RULES: Record<ReelLanguage, string> = {
   en: "Write in simple Indian English.",
   hi: "Write in Hindi, in Devanagari script.",
   te: "Write in Telugu, in Telugu script.",

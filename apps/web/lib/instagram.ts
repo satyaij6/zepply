@@ -2,6 +2,9 @@
 
 const GRAPH_API_FB = "https://graph.facebook.com/v21.0";
 
+/** Remembers where to send someone after Instagram (set by /api/instagram/connect?next=…) */
+export const IG_RETURN_COOKIE = "ig_return_to";
+
 // ─── OAuth (Facebook Login — works with localhost) ─────────
 
 export function getInstagramAuthUrl(): string {
@@ -184,6 +187,43 @@ export async function getIGUserProfile(igUserId: string, accessToken: string) {
     profile_picture_url?: string;
     followers_count?: number;
   }>;
+}
+
+/** Bio, website and display name, for learning a brand during onboarding. */
+export async function getIGProfileDetails(igUserId: string, accessToken: string) {
+  const url = new URL(`${GRAPH_API_FB}/${igUserId}`);
+  url.searchParams.set("fields", "username,name,biography,website,profile_picture_url");
+  url.searchParams.set("access_token", accessToken);
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`Failed to get IG profile details: ${await response.text()}`);
+  return response.json() as Promise<{
+    username: string;
+    name?: string;
+    biography?: string;
+    website?: string;
+    profile_picture_url?: string;
+  }>;
+}
+
+export type IGRecentPost = { id: string; caption: string; mediaType: string; imageUrl: string | null };
+
+/** The account's latest posts, newest first, each with an image (the cover frame for videos). */
+export async function getIGRecentPosts(igUserId: string, accessToken: string, limit = 12): Promise<IGRecentPost[]> {
+  const url = new URL(`${GRAPH_API_FB}/${igUserId}/media`);
+  url.searchParams.set("fields", "id,caption,media_type,media_url,thumbnail_url");
+  url.searchParams.set("limit", String(limit));
+  url.searchParams.set("access_token", accessToken);
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`Failed to get IG posts: ${await response.text()}`);
+  const body = (await response.json()) as {
+    data?: { id: string; caption?: string; media_type: string; media_url?: string; thumbnail_url?: string }[];
+  };
+  return (body.data ?? []).map((m) => ({
+    id: m.id,
+    caption: m.caption ?? "",
+    mediaType: m.media_type,
+    imageUrl: (m.media_type === "VIDEO" ? m.thumbnail_url : m.media_url) ?? null,
+  }));
 }
 
 // ─── Messaging ────────────────────────────────────────────
