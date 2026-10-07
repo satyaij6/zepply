@@ -5,6 +5,7 @@ import { Check, ImagePlus, LayoutGrid, Link2, Loader2, ShieldCheck, Upload, X } 
 import { useEffect, useRef, useState } from "react";
 import { uploadImage } from "@/components/create/BrandFields";
 import type { BrandKitView } from "@/lib/brand-kit";
+import type { Path } from "@/lib/onboarding/options";
 import type { OnboardingState } from "@/lib/onboarding/state";
 import { MAX_PHOTOS } from "@/lib/reels/options";
 import { Eyebrow, HandNote, Lede, Nav, Title, api } from "./ui";
@@ -18,6 +19,7 @@ const CONNECT_ERRORS: Record<string, string> = {
 };
 
 export function StepConnect({
+  path,
   instagram,
   connectError,
   onBack,
@@ -25,6 +27,7 @@ export function StepConnect({
   busy,
   error,
 }: {
+  path: Path;
   instagram: OnboardingState["instagram"];
   /** Error code Instagram's callback sent back (?error=…) */
   connectError: string | null;
@@ -42,6 +45,61 @@ export function StepConnect({
       .catch(() => setKit(null));
   }, []);
   const hasSomething = !!instagram || !!kit?.logoPath || (kit?.photoPaths.length ?? 0) > 0;
+  const [showUpload, setShowUpload] = useState(false);
+
+  const footer = (
+    <>
+      <p className="mt-4 flex items-center gap-3 rounded-2xl bg-emerald-50 px-5 py-3 text-sm text-emerald-900">
+        <ShieldCheck className="h-5 w-5 shrink-0 text-emerald-600" />
+        We use Instagram&apos;s official API. We never see your password, and your access is stored encrypted.
+      </p>
+
+      <Nav onBack={onBack} onNext={onNext} disabled={!hasSomething} busy={busy} error={error} />
+      {!hasSomething && (
+        <button type="button" onClick={onNext} className="mt-4 text-sm font-medium text-app-muted underline-offset-4 hover:text-app-ink hover:underline">
+          Continue without connecting
+        </button>
+      )}
+    </>
+  );
+
+  // Creators: their channels are their brand. Instagram first; photos of them as the fallback.
+  if (path === "creator") {
+    const photoCount = kit?.photoPaths.length ?? 0;
+    return (
+      <div className="mx-auto grid max-w-[1240px] gap-10 lg:grid-cols-[minmax(0,1fr)_420px]">
+        <div>
+          <Eyebrow step={3} />
+          <Title accent="post?">Where do you</Title>
+          <Lede>Connect your Instagram and we&apos;ll learn your style: your look, your voice and what your audience loves.</Lede>
+
+          <div className="mt-6">
+            <Accounts instagram={instagram} connectError={connectError} soon={["YouTube", "TikTok"]} />
+          </div>
+
+          <div className="mt-4">
+            {showUpload || photoCount > 0 ? (
+              <Uploads kit={kit} setKit={setKit} photosOnly />
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowUpload(true)}
+                className="inline-flex items-center gap-2 text-sm font-medium text-app-ink underline-offset-4 hover:underline"
+              >
+                <ImagePlus className="h-4 w-4" /> No Instagram yet? Upload a few photos of you instead
+              </button>
+            )}
+          </div>
+
+          {footer}
+        </div>
+
+        <aside className="hidden lg:block">
+          <CreatorIllustration />
+        </aside>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto grid max-w-[1240px] gap-10 lg:grid-cols-[minmax(0,1fr)_420px]">
@@ -67,17 +125,7 @@ export function StepConnect({
           )}
         </div>
 
-        <p className="mt-4 flex items-center gap-3 rounded-2xl bg-emerald-50 px-5 py-3 text-sm text-emerald-900">
-          <ShieldCheck className="h-5 w-5 shrink-0 text-emerald-600" />
-          We use Instagram&apos;s official API. We never see your password, and your access is stored encrypted.
-        </p>
-
-        <Nav onBack={onBack} onNext={onNext} disabled={!hasSomething} busy={busy} error={error} />
-        {!hasSomething && (
-          <button type="button" onClick={onNext} className="mt-4 text-sm font-medium text-app-muted underline-offset-4 hover:text-app-ink hover:underline">
-            Continue without connecting
-          </button>
-        )}
+        {footer}
       </div>
 
       <aside className="hidden lg:block">
@@ -104,7 +152,16 @@ function TabButton({ active, onClick, icon, label, soon }: { active: boolean; on
   );
 }
 
-function Accounts({ instagram, connectError }: { instagram: OnboardingState["instagram"]; connectError: string | null }) {
+function Accounts({
+  instagram,
+  connectError,
+  soon = ["YouTube", "TikTok", "Facebook"],
+}: {
+  instagram: OnboardingState["instagram"];
+  connectError: string | null;
+  /** Platforms shown as coming soon */
+  soon?: string[];
+}) {
   const [leaving, setLeaving] = useState(false);
   const message = connectError ? CONNECT_ERRORS[connectError] ?? CONNECT_ERRORS.callback_failed : null;
   return (
@@ -143,8 +200,8 @@ function Accounts({ instagram, connectError }: { instagram: OnboardingState["ins
           </a>
         )}
       </div>
-      <div className="grid gap-3 sm:grid-cols-3">
-        {["YouTube", "TikTok", "Facebook"].map((p) => (
+      <div className={`grid gap-3 ${soon.length === 2 ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}>
+        {soon.map((p) => (
           <div key={p} className="flex items-center justify-between rounded-2xl border border-app-line bg-app-card px-4 py-3 text-app-faint">
             <span className="font-medium">{p}</span>
             <span className="rounded-full bg-app-bg px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide">Soon</span>
@@ -155,8 +212,8 @@ function Accounts({ instagram, connectError }: { instagram: OnboardingState["ins
   );
 }
 
-/** Logo and photos, saved straight into the brand kit */
-function Uploads({ kit, setKit }: { kit: BrandKitView | null | undefined; setKit: (k: BrandKitView) => void }) {
+/** Logo and photos, saved straight into the brand kit. Creators get photos only ("your best shots"). */
+function Uploads({ kit, setKit, photosOnly = false }: { kit: BrandKitView | null | undefined; setKit: (k: BrandKitView) => void; photosOnly?: boolean }) {
   const [busy, setBusy] = useState<"logo" | "photo" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const logoInput = useRef<HTMLInputElement>(null);
@@ -211,8 +268,8 @@ function Uploads({ kit, setKit }: { kit: BrandKitView | null | undefined; setKit
   }
 
   return (
-    <div className="grid gap-4 rounded-2xl border border-app-line bg-app-card px-5 py-4 sm:grid-cols-[96px_minmax(0,1fr)]">
-      <div>
+    <div className={`grid gap-4 rounded-2xl border border-app-line bg-app-card px-5 py-4 ${photosOnly ? "" : "sm:grid-cols-[96px_minmax(0,1fr)]"}`}>
+      <div className={photosOnly ? "hidden" : undefined}>
         <p className="mb-1.5 text-sm font-semibold text-app-ink">Logo</p>
         <button
           type="button"
@@ -225,7 +282,7 @@ function Uploads({ kit, setKit }: { kit: BrandKitView | null | undefined; setKit
       </div>
       <div>
         <p className="mb-1.5 text-sm font-semibold text-app-ink">
-          Photos <span className="font-normal text-app-faint">({kit.photos.length}/{MAX_PHOTOS})</span>
+          {photosOnly ? "Your best shots" : "Photos"} <span className="font-normal text-app-faint">({kit.photos.length}/{MAX_PHOTOS})</span>
         </p>
         <div className="grid grid-cols-6 gap-2">
           {kit.photos.map((p) => (
@@ -315,6 +372,60 @@ function AnalysisIllustration() {
         </div>
       </div>
       <HandNote className="mt-3 max-w-[260px] -rotate-2">Editable later in your brand kit.</HandNote>
+    </div>
+  );
+}
+
+/** What step 4 will learn about a creator: their look, voice and audience */
+function CreatorIllustration() {
+  const rows = ["Finding your look", "Learning your voice", "Seeing what your audience loves", "Spotting your topics"];
+  return (
+    <div className="relative pt-1">
+      <HandNote className="ml-auto max-w-[220px] rotate-3 text-right">One connection. We&apos;ll learn the rest.</HandNote>
+      <div className="mt-3 rounded-3xl border border-app-line bg-app-card px-5 py-4 shadow-[0_30px_60px_-30px_rgba(0,0,0,0.25)]">
+        <p className="font-semibold text-app-ink">Learning your style…</p>
+        <ul className="mt-3 space-y-2">
+          {rows.map((r, i) => (
+            <li key={r} className="flex items-center gap-3 text-sm text-app-ink">
+              <span className={`flex h-5 w-5 items-center justify-center rounded-full ${i < 3 ? "bg-electric text-white" : "border-2 border-electric/40 border-t-electric"}`}>
+                {i < 3 && <Check className="h-3 w-3" strokeWidth={3} />}
+              </span>
+              {r}
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div className="relative mt-4 grid grid-cols-[1fr_1.05fr] gap-4">
+        <div className="relative aspect-[9/14] -rotate-3 overflow-hidden rounded-3xl bg-app-side shadow-lg">
+          <Image src="/landing/latte-pour.jpg" alt="" fill sizes="200px" className="object-cover" />
+          <span className="absolute left-3 top-3 rounded-full bg-black/60 px-2.5 py-1 text-xs font-semibold text-white">▶ 48.2K</span>
+          <span className="absolute bottom-3 left-3 right-3 font-display text-[15px] font-semibold leading-tight text-white drop-shadow">My morning routine, honestly</span>
+        </div>
+        <div className="space-y-3 pt-2">
+          <div className="flex items-center gap-3 rounded-2xl border border-app-line bg-app-card p-3">
+            <Image src="/landing/avatar-owner.jpg" alt="" width={40} height={40} className="h-10 w-10 rounded-full object-cover" />
+            <span className="min-w-0">
+              <span className="block truncate text-sm font-semibold text-app-ink">@yourhandle</span>
+              <span className="block text-xs text-app-muted">Lifestyle · Hyderabad</span>
+            </span>
+          </div>
+          <div className="rounded-2xl border border-app-line bg-app-card p-3">
+            <p className="text-sm font-semibold text-app-ink">Your voice</p>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {["Funny", "Honest", "Relatable"].map((t) => (
+                <span key={t} className="rounded-full bg-app-bg px-2.5 py-1 text-xs text-app-ink">
+                  {t}
+                </span>
+              ))}
+            </div>
+          </div>
+          <div className="rounded-2xl border border-app-line bg-app-card p-3">
+            <p className="text-sm font-semibold text-app-ink">Audience loves</p>
+            <p className="mt-1 text-xs leading-snug text-app-muted">Day-in-my-life Reels, quick tips, behind the scenes</p>
+          </div>
+        </div>
+      </div>
+      <HandNote className="mt-3 max-w-[260px] -rotate-2">Editable any time later.</HandNote>
     </div>
   );
 }

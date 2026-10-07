@@ -110,6 +110,7 @@ export function Wizard({ initial, connectError }: { initial: OnboardingState; co
         )}
         {step === 3 && (
           <StepConnect
+            path={path ?? "business"}
             instagram={state.instagram}
             connectError={connectError}
             onBack={() => go(2)}
@@ -121,7 +122,7 @@ export function Wizard({ initial, connectError }: { initial: OnboardingState; co
             error={error}
           />
         )}
-        {step === 4 && <StepBrandKit analyse={analyse} onAnalysed={onAnalysed} onBack={() => go(3)} onNext={() => saveAndGo(5)} />}
+        {step === 4 && <StepBrandKit path={path ?? "business"} analyse={analyse} onAnalysed={onAnalysed} onBack={() => go(3)} onNext={() => saveAndGo(5)} />}
         {step === 5 && (
           <StepContent
             onBack={() => go(4)}
@@ -131,7 +132,7 @@ export function Wizard({ initial, connectError }: { initial: OnboardingState; co
             }}
           />
         )}
-        {step === 6 && <StepDoneLoader drafts={drafts} setDrafts={setDrafts} instagram={state.instagram?.username ?? null} onBack={() => go(5)} onFinish={finish} busy={busy} error={error} />}
+        {step === 6 && <StepDoneLoader drafts={drafts} setDrafts={setDrafts} path={state.path} instagram={state.instagram?.username ?? null} onBack={() => go(5)} onFinish={finish} busy={busy} error={error} />}
       </main>
       </FitFrame>
     </div>
@@ -146,6 +147,7 @@ function StepDoneLoader({
 }: {
   drafts: DraftJson[];
   setDrafts: (d: DraftJson[]) => void;
+  path: string | null;
   instagram: string | null;
   onBack: () => void;
   onFinish: () => void;

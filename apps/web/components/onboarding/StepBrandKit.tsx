@@ -5,7 +5,7 @@ import { Check, ChevronLeft, ChevronRight, Loader2, Pencil, RefreshCw, Sparkles,
 import { useCallback, useEffect, useRef, useState } from "react";
 import { uploadImage } from "@/components/create/BrandFields";
 import type { BrandKitView } from "@/lib/brand-kit";
-import { FONTS, MAX_COLORS, MAX_TAGS } from "@/lib/onboarding/options";
+import { FONTS, MAX_COLORS, MAX_TAGS, type Path } from "@/lib/onboarding/options";
 import { paletteFromImages } from "./palette";
 import { Eyebrow, Lede, Nav, TagEditor, Title, api } from "./ui";
 
@@ -18,15 +18,26 @@ export const FONT_CSS: Record<string, string> = {
   "instrument-serif": "var(--font-landing-serif)",
 };
 
-const ANALYSIS_STEPS = ["Fetching your visual identity", "Understanding your tone of voice", "Identifying your audience", "Finding what you offer"];
+const ANALYSIS_STEPS = {
+  business: ["Fetching your visual identity", "Understanding your tone of voice", "Identifying your audience", "Finding what you offer"],
+  creator: ["Finding your look", "Learning your voice", "Seeing what your audience loves", "Spotting your topics"],
+};
+
+/** Creators aren't "a brand": the same kit, in their words */
+const WORDS = {
+  business: { title: "your brand.", lede: "We built a brand kit from what you shared.", logo: "Logo", colours: "Brand colours", voice: "Brand voice", offer: "What you offer", offerLine: "One line about what you do", addOffer: "Add an offer", analysing: "Analysing your brand…" },
+  creator: { title: "your style.", lede: "We built your creator kit from what you shared.", logo: "Profile photo", colours: "Your colours", voice: "Your voice", offer: "What you talk about", offerLine: "One line about you and your content", addOffer: "Add a topic", analysing: "Learning your style…" },
+};
 
 export function StepBrandKit({
+  path,
   analyse,
   onAnalysed,
   onBack,
   onNext,
 }: {
   /** Run the analysis on arrival (first visit, or after connecting something new) */
+  path: Path;
   analyse: boolean;
   onAnalysed: () => void;
   onBack: () => void;
@@ -110,18 +121,19 @@ export function StepBrandKit({
     }
   };
 
-  if (working || !kit) return <Analysing failed={!working && !kit ? error : null} onRetry={run} />;
+  const words = WORDS[path];
+  if (working || !kit) return <Analysing path={path} failed={!working && !kit ? error : null} onRetry={run} />;
 
   return (
     <div className="mx-auto grid max-w-[1320px] gap-8 xl:grid-cols-[minmax(0,1fr)_420px]">
       <div>
         <Eyebrow step={4} />
-        <Title accent="your brand.">Here&apos;s what we learned about</Title>
-        <Lede>We built a brand kit from what you shared. Change anything here now, or later in Brand Kit.</Lede>
+        <Title accent={words.title}>Here&apos;s what we learned about</Title>
+        <Lede>{words.lede} Change anything here now, or later in Brand Kit.</Lede>
 
         <div className="mt-5 grid gap-3 md:grid-cols-[minmax(0,0.7fr)_minmax(0,1fr)_minmax(0,1fr)]">
-          <LogoCard kit={kit} onChange={update} />
-          <Card title="Brand colours">
+          <LogoCard kit={kit} onChange={update} title={words.logo} />
+          <Card title={words.colours}>
             <div className="grid grid-cols-4 gap-2">
               {Array.from({ length: MAX_COLORS }, (_, i) => kit.colors[i] ?? "#FFFFFF").map((c, i) => (
                 <label key={i} className="group cursor-pointer text-center">
@@ -146,7 +158,7 @@ export function StepBrandKit({
         </div>
 
         <div className="mt-3 grid gap-3 md:grid-cols-2">
-          <Card title="Brand voice">
+          <Card title={words.voice}>
             <TagEditor tags={kit.voice} onChange={(voice) => update({ voice })} max={MAX_TAGS} placeholder="Add a word" />
           </Card>
           <Card title="Audience" icon={<Target className="h-4 w-4" />}>
@@ -158,16 +170,16 @@ export function StepBrandKit({
               className="w-full resize-none rounded-xl border border-transparent bg-app-bg px-3 py-2 text-sm leading-relaxed text-app-ink outline-none focus:border-electric"
             />
           </Card>
-          <Card title="What you offer">
+          <Card title={words.offer}>
             <textarea
               value={kit.about ?? ""}
               onChange={(e) => update({ about: e.target.value })}
               rows={2}
               maxLength={200}
-              placeholder="One line about what you do"
+              placeholder={words.offerLine}
               className="mb-3 w-full resize-none rounded-xl border border-transparent bg-app-bg px-3 py-2 text-sm leading-relaxed text-app-ink outline-none focus:border-electric"
             />
-            <TagEditor tags={kit.offerings} onChange={(offerings) => update({ offerings })} max={MAX_TAGS} placeholder="Add an offer" />
+            <TagEditor tags={kit.offerings} onChange={(offerings) => update({ offerings })} max={MAX_TAGS} placeholder={words.addOffer} />
           </Card>
           <Card title="Content themes" icon={<Sparkles className="h-4 w-4" />}>
             <TagEditor tags={kit.themes} onChange={(themes) => update({ themes })} max={MAX_TAGS} placeholder="Add a theme" />
@@ -210,13 +222,13 @@ function Card({ title, icon, action, children }: { title: string; icon?: React.R
   );
 }
 
-function LogoCard({ kit, onChange }: { kit: BrandKitView; onChange: (p: Partial<BrandKitView>) => void }) {
+function LogoCard({ kit, onChange, title }: { kit: BrandKitView; onChange: (p: Partial<BrandKitView>) => void; title: string }) {
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   return (
     <Card
-      title="Logo"
+      title={title}
       action={
         <button type="button" onClick={() => input.current?.click()} className="text-xs font-medium text-electric hover:underline">
           Change
@@ -365,19 +377,21 @@ function Preview({ kit }: { kit: BrandKitView }) {
   );
 }
 
-function Analysing({ failed, onRetry }: { failed: string | null; onRetry: () => void }) {
+function Analysing({ path, failed, onRetry }: { path: Path; failed: string | null; onRetry: () => void }) {
+  const steps = ANALYSIS_STEPS[path];
   const [done, setDone] = useState(0);
   useEffect(() => {
     if (failed) return;
-    const t = setInterval(() => setDone((d) => Math.min(d + 1, ANALYSIS_STEPS.length - 1)), 2600);
+    const last = steps.length - 1;
+    const t = setInterval(() => setDone((d) => Math.min(d + 1, last)), 2600);
     return () => clearInterval(t);
-  }, [failed]);
+  }, [failed, steps.length]);
   return (
     <div className="mx-auto max-w-[520px] py-16 text-center">
       <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-electric-wash">
         {failed ? <RefreshCw className="h-7 w-7 text-electric" /> : <Loader2 className="h-7 w-7 animate-spin text-electric" />}
       </span>
-      <h1 className="mt-6 font-display text-[34px] font-semibold tracking-[-0.03em] text-app-ink">{failed ? "That didn't work" : "Analysing your brand…"}</h1>
+      <h1 className="mt-6 font-display text-[34px] font-semibold tracking-[-0.03em] text-app-ink">{failed ? "That didn't work" : WORDS[path].analysing}</h1>
       {failed ? (
         <>
           <p className="mt-3 text-app-muted">{failed}</p>
@@ -387,7 +401,7 @@ function Analysing({ failed, onRetry }: { failed: string | null; onRetry: () => 
         </>
       ) : (
         <ul className="mx-auto mt-8 max-w-[320px] space-y-4 text-left">
-          {ANALYSIS_STEPS.map((s, i) => (
+          {steps.map((s, i) => (
             <li key={s} className={`flex items-center gap-3 ${i <= done ? "text-app-ink" : "text-app-faint"}`}>
               <span className={`flex h-6 w-6 items-center justify-center rounded-full ${i < done ? "bg-electric text-white" : i === done ? "border-2 border-electric/30 border-t-electric animate-spin" : "border-2 border-app-line"}`}>
                 {i < done && <Check className="h-3.5 w-3.5" strokeWidth={3} />}

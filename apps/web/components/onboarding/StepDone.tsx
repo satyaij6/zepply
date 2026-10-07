@@ -9,6 +9,7 @@ import type { Draft } from "@prisma/client";
 type DraftJson = Omit<Draft, "createdAt" | "updatedAt"> & { createdAt: string; updatedAt: string };
 
 export function StepDone({
+  path,
   instagram,
   drafts,
   onBack,
@@ -16,6 +17,7 @@ export function StepDone({
   busy,
   error,
 }: {
+  path: string | null;
   instagram: string | null;
   drafts: DraftJson[];
   onBack: () => void;
@@ -33,7 +35,7 @@ export function StepDone({
         <p className="mt-3 max-w-[480px] text-base leading-relaxed text-app-muted">Everything is set up from your answers. Next: create, reply and grow.</p>
 
         <ul className="mt-6 space-y-2.5">
-          <Row icon={<Palette className="h-5 w-5" />} tint="bg-violet-100 text-violet-700" title="Your brand is ready" sub="Logo, colours, voice and audience are saved." done />
+          <Row icon={<Palette className="h-5 w-5" />} tint="bg-violet-100 text-violet-700" title={path === "creator" ? "Your style is saved" : "Your brand is ready"} sub={path === "creator" ? "Profile photo, colours, voice and audience are saved." : "Logo, colours, voice and audience are saved."} done />
           <Row
             icon={<AtSign className="h-5 w-5" />}
             tint="bg-pink-100 text-pink-600"

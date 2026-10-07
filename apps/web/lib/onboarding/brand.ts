@@ -107,7 +107,11 @@ export async function analyzeBrand(userId: string): Promise<{ source: "ai" | "ba
         `Here is what we know about a ${path === "business" ? "business" : "creator"} joining Zepply, ` +
         `plus their logo or profile photo and recent post photos (above, if any):\n\n${JSON.stringify(facts, null, 2)}\n\n` +
         "Build their brand kit. Take colours from the logo and photos (not generic defaults), keep every tag short, " +
-        "and write for a small Indian business or creator, in English.",
+        "and write for a small Indian business or creator, in English." +
+        (path === "creator"
+          ? " This is a creator, not a business: the image first is their profile photo, voice is their personal voice, " +
+            "and offerings are the topics they make content about (not products)."
+          : ""),
     },
   ];
 
@@ -194,16 +198,24 @@ const THEMES: Record<string, string[]> = {
   creator: ["Behind the scenes", "Tips & lessons", "Personal stories", "Q&A with followers"],
 };
 
+/** How a creator's niche reads in a sentence, and who it's for */
+const CREATOR_WORDS: Record<string, { makes: string; audience: string }> = {
+  "personal-brand": { makes: "shares their life, ideas and what they've learned", audience: "People who follow the journey and want the honest take" },
+  education: { makes: "teaches what they know in short, useful posts", audience: "People who want to learn something useful, fast" },
+  podcast: { makes: "turns long conversations into short, shareable clips", audience: "Listeners who want the best moments without the full episode" },
+  coaching: { makes: "helps people grow with practical advice", audience: "People looking for guidance and a push in the right direction" },
+  entertainment: { makes: "makes fun, entertaining content", audience: "People who come for a laugh and stay for the vibe" },
+};
+
 /** Used when Claude isn't available: honest defaults from the onboarding answers. */
 function basicAnalysis(path: Path, niche: string | null, name: string, location: string | null, colors: string[]): Analysis {
   const business = path === "business";
   const what = labelOf(business ? BUSINESS_TYPES : CREATOR_NICHES, niche);
+  const creator = CREATOR_WORDS[niche ?? ""] ?? { makes: "creates content their audience loves", audience: "People who enjoy their content and want more of it" };
   return {
     brandName: name,
-    about: business ? `${name}${what ? `, ${what.toLowerCase()}` : ""}${location ? ` in ${location}` : ""}.` : `${name} creates ${what?.toLowerCase() ?? "content"}.`,
-    audience: business
-      ? `People${location ? ` in and around ${location}` : " nearby"} looking for what ${name} offers.`
-      : `People who enjoy ${what?.toLowerCase() ?? "this kind of content"} and want more of it.`,
+    about: business ? `${name}${what ? `, ${what.toLowerCase()}` : ""}${location ? ` in ${location}` : ""}.` : `${name} ${creator.makes}.`,
+    audience: business ? `People${location ? ` in and around ${location}` : " nearby"} looking for what ${name} offers.` : `${creator.audience}.`,
     voice: ["Warm", "Friendly", "Confident"],
     offerings: [],
     themes: THEMES[business ? niche ?? "" : "creator"] ?? ["Behind the scenes", "Customer stories", "Offers & updates", "Tips"],
