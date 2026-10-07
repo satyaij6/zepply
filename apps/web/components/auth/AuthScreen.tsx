@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Check } from "lucide-react";
 import { signIn } from "@/lib/auth";
 import { Accent } from "@/components/landing/home/SectionHeader";
@@ -46,6 +47,8 @@ export default function AuthScreen({ mode, error }: { mode: Mode; error?: string
 
   async function continueWithGoogle() {
     "use server";
+    // Without keys Google shows its own "invalid_client" page; explain it here instead
+    if (!process.env.AUTH_GOOGLE_ID || !process.env.AUTH_GOOGLE_SECRET) redirect(`/${mode}?error=Configuration`);
     // /start sends people who have finished onboarding on to the dashboard
     await signIn("google", { redirectTo: "/start" });
   }
