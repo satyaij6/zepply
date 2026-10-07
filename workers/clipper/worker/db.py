@@ -34,6 +34,8 @@ class Job:
     layout: str = "auto"
     effects: bool = True
     niche: str | None = None
+    broll: bool = False
+    accent: str | None = None
 
 
 def connect(url: str) -> psycopg.Connection:
@@ -53,8 +55,9 @@ def claim(conn: psycopg.Connection, worker_id: str) -> Job | None:
                       FOR UPDATE SKIP LOCKED
                       LIMIT 1)
      RETURNING id, "userId", "sourceKind"::text AS kind, "sourcePath", "sourceUrl",
-               language, "clipCount", style, "captionPos", attempts, layout, effects,
-               (SELECT niche FROM "User" u WHERE u.id = "ClipJob"."userId") AS niche
+               language, "clipCount", style, "captionPos", attempts, layout, effects, broll,
+               (SELECT niche FROM "User" u WHERE u.id = "ClipJob"."userId") AS niche,
+               (SELECT accent FROM "BrandKit" b WHERE b."userId" = "ClipJob"."userId") AS accent
         """,
         {"worker": worker_id},
     ).fetchone()
@@ -65,6 +68,7 @@ def claim(conn: psycopg.Connection, worker_id: str) -> Job | None:
         source_url=row["sourceUrl"], language=row["language"], clip_count=row["clipCount"],
         style=row["style"], caption_pos=row["captionPos"], attempts=row["attempts"],
         layout=row["layout"], effects=row["effects"], niche=row["niche"],
+        broll=row["broll"], accent=row["accent"],
     )
 
 

@@ -69,6 +69,8 @@ def cmd_run(args: argparse.Namespace) -> int:
         layout=args.layout, render_workers=args.render_workers,
         punch_ins=(False if args.no_effects else None),
         postkit=(False if args.no_postkit else None), niche=args.niche,
+        broll=(True if args.broll else None), broll_accent=args.accent,
+        broll_keep_work=(True if args.keep_broll else None),
     )
     name = args.name or (name_for_url(args.source) if "://" in args.source
                          else slugify(Path(args.source).stem))
@@ -321,6 +323,11 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--no-postkit", action="store_true",
                      help="skip titles, caption, hashtags and chapters")
     run.add_argument("--niche", help="the creator's niche, for the post copy")
+    run.add_argument("--broll", action="store_true",
+                     help="add storytelling motion-graphics B-roll (Claude + HyperFrames)")
+    run.add_argument("--accent", help="brand accent colour for the B-roll, e.g. #FF5A1F")
+    run.add_argument("--keep-broll", action="store_true",
+                     help="keep each clip's HyperFrames project for review")
     run.add_argument("--debug-reframe", action="store_true",
                      help="also write proxy overlays showing the crop window")
     run.add_argument("--no-cache", action="store_true", help="ignore the ASR cache")

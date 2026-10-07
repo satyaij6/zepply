@@ -348,6 +348,7 @@ const DEMO_JOB: JobDetail = {
   style: "clean",
   layout: "auto",
   effects: true,
+  broll: true,
   sourceSeconds: 4191,
   createdAt: new Date().toISOString(),
   startedAt: new Date().toISOString(),

@@ -23,6 +23,7 @@ const body = z.object({
   captionPos: z.enum(CAPTION_POSITIONS),
   layout: z.enum(values(CLIP_LAYOUTS)).default("auto"),
   effects: z.boolean().default(true),
+  broll: z.boolean().default(false),
 });
 
 // GET — The user's clip jobs, newest first

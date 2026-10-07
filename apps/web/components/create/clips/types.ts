@@ -44,6 +44,7 @@ export type JobDetail = Omit<JobRow, "_count"> & {
   style: string;
   layout: string;
   effects: boolean;
+  broll: boolean;
   sourceSeconds: number | null;
   sourceKit: SourceKit | null;
   startedAt: string | null;

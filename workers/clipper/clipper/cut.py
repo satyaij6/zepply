@@ -26,7 +26,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
-from . import assembler_render, cover, emphasis, ffmpeg, reframe
+from . import assembler_render, broll, cover, emphasis, ffmpeg, reframe
 from .assemble import join_windows
 from .captions import (
     Cue, assert_no_cue_straddles_a_join, build_assembled_cues, build_cues,
@@ -198,6 +198,9 @@ def render_plan(
     )
 
     zoom = emphasis.zoom_chain(punches or [], settings, fps)
+    # With B-roll the captions go on last, over the graphics; see broll.py.
+    final_captions = burn_captions
+    burn_captions = burn_captions and not settings.broll
     if single:
         _render_single(plan, video, ass, media_path, settings,
                        burn_captions=burn_captions, out_dir=out_dir,
@@ -219,6 +222,14 @@ def render_plan(
             f"clip_{index:02d} produced no usable video",
             hint="Check the source still exists and every span is inside it.",
         )
+
+    if settings.broll:
+        if frame_plans is None:
+            frame_plans = plan_framings(plan, reframe_ctx, settings,
+                                        source_size=source_size, fps=fps)
+        broll.apply(plan, index, video, ass, words, settings, fps=fps,
+                    burn=final_captions, title=plan.suggested_title,
+                    frame_plans=frame_plans, cache_dir=paths.work)
 
     if settings.covers:
         _stage_font(out_dir, ASSETS_DIR / cover.FONT)
@@ -439,6 +450,9 @@ def cut_plans(
         cover_path = paths.root / f"clip_{n:02d}_cover.jpg"
         entry["cover_path"] = str(cover_path) if cover_path.exists() else None
         entry["punches"] = [p.to_dict() for p in punches.get(n, [])]
+        broll_json = paths.root / f"clip_{n:02d}_broll.json"
+        entry["broll"] = (json.loads(broll_json.read_text(encoding="utf-8"))["moments"]
+                          if settings.broll and broll_json.exists() else [])
         entry.update(clip_kits.get(str(n), {}))
         entry["final_score"] = round(
             plan.final(settings.w_hook, settings.w_standalone, settings.w_coherence), 4

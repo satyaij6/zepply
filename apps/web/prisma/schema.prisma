@@ -135,6 +135,8 @@ model ClipJob {
   layout        String         @default("auto")
   /// Zoom punch-ins on emphasised words
   effects       Boolean        @default(true)
+  /// Storytelling motion-graphics B-roll, designed per clip (adds minutes per clip)
+  broll         Boolean        @default(false)
   /// Post copy for the long video itself: { titles, description, chapters: [{ start, title }] }
   sourceKit     Json?
   status        ClipJobStatus  @default(QUEUED)
