@@ -1,0 +1,42 @@
+/*
+ * Options the clip engine (workers/clipper) accepts, in one place for the API and the Create page.
+ * Safe to import from client components: no server-only code here.
+ */
+
+/** Languages the engine can transcribe and caption. Stage A3 adds Hindi, English and code-mixed. */
+export const CLIP_LANGUAGES = [{ value: "te", label: "Telugu" }] as const;
+export type ClipLanguage = (typeof CLIP_LANGUAGES)[number]["value"];
+
+/** Caption styles: the files in workers/clipper/styles. "Latin" styles show the speech in English letters. */
+export const CLIP_STYLES = [
+  { value: "clean", label: "Clean", script: "Telugu", note: "Plain captions low in frame" },
+  { value: "telugu_noto", label: "Noto", script: "Telugu", note: "Telugu in Noto Sans" },
+  { value: "roman", label: "Roman", script: "Latin", note: "Romanised captions" },
+  { value: "tiktok", label: "Bold", script: "Latin", note: "Heavy short-form captions" },
+  { value: "roboto", label: "Sans", script: "Latin", note: "Plain sans captions" },
+  { value: "zalando", label: "Wide", script: "Latin", note: "Wide sans captions" },
+  { value: "didot", label: "Editorial", script: "Latin", note: "Serif captions" },
+  { value: "headline", label: "Headline", script: "Latin", note: "Square video with a title band" },
+] as const;
+export type ClipStyle = (typeof CLIP_STYLES)[number]["value"];
+
+export const CAPTION_POSITIONS = ["bottom", "center", "top"] as const;
+
+export const CLIP_COUNT = { min: 1, max: 10, default: 5 } as const;
+
+/** Largest upload accepted. The Supabase project's own upload limit must be at least this. */
+export const MAX_UPLOAD_BYTES = 2 * 1024 ** 3;
+
+/** Jobs one user may have queued or running at once. */
+export const MAX_ACTIVE_JOBS = 3;
+
+export const BUCKETS = { sources: "clip-sources", renders: "clip-renders" } as const;
+
+export const isYouTubeUrl = (value: string) => {
+  try {
+    const { hostname, protocol } = new URL(value);
+    return protocol === "https:" && /(^|\.)(youtube\.com|youtu\.be)$/.test(hostname);
+  } catch {
+    return false;
+  }
+};

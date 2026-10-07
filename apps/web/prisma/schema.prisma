@@ -9,12 +9,17 @@ datasource db {
 }
 
 model User {
-  id           String             @id @default(cuid())
-  email        String?            @unique
-  name         String?
-  plan         Plan               @default(FREE)
-  createdAt    DateTime           @default(now())
-  igAccounts   InstagramAccount[]
+  id              String             @id @default(cuid())
+  email           String?            @unique
+  name            String?
+  plan            Plan               @default(FREE)
+  /// Allowlist for the video engine until credits exist; set to true by hand for pilot users.
+  canCreateVideos Boolean            @default(false)
+  createdAt       DateTime           @default(now())
+  igAccounts      InstagramAccount[]
+  clipJobs        ClipJob[]
+  brandKit        BrandKit?
+  reelJobs        ReelJob[]
 }
 
 model InstagramAccount {
@@ -22,7 +27,7 @@ model InstagramAccount {
   userId         String
   user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   igUserId       String      @unique
-  igUsername      String
+  igUsername     String
   igProfilePic   String?
   followerCount  Int         @default(0)
   accessToken    String
@@ -60,24 +65,24 @@ model Trigger {
 }
 
 model Lead {
-  id            String           @id @default(cuid())
-  igAccountId   String
-  igAccount     InstagramAccount @relation(fields: [igAccountId], references: [id], onDelete: Cascade)
-  triggerId     String?
-  trigger       Trigger?         @relation(fields: [triggerId], references: [id], onDelete: SetNull)
-  igUserId      String
-  igUsername     String
-  capturedAt    DateTime         @default(now())
+  id          String           @id @default(cuid())
+  igAccountId String
+  igAccount   InstagramAccount @relation(fields: [igAccountId], references: [id], onDelete: Cascade)
+  triggerId   String?
+  trigger     Trigger?         @relation(fields: [triggerId], references: [id], onDelete: SetNull)
+  igUserId    String
+  igUsername  String
+  capturedAt  DateTime         @default(now())
 }
 
 model Analytics {
-  id             String           @id @default(cuid())
-  igAccountId    String
-  igAccount      InstagramAccount @relation(fields: [igAccountId], references: [id], onDelete: Cascade)
-  date           DateTime         @default(now())
-  triggersHit    Int              @default(0)
-  leadsCaptured  Int              @default(0)
-  dmsSent        Int              @default(0)
+  id            String           @id @default(cuid())
+  igAccountId   String
+  igAccount     InstagramAccount @relation(fields: [igAccountId], references: [id], onDelete: Cascade)
+  date          DateTime         @default(now())
+  triggersHit   Int              @default(0)
+  leadsCaptured Int              @default(0)
+  dmsSent       Int              @default(0)
 }
 
 enum Plan {
@@ -90,4 +95,136 @@ enum TriggerType {
   DM_KEYWORD
   STORY_REPLY
   NEW_FOLLOWER
+}
+
+/// One long video submitted to the clip engine. The Python worker in workers/clipper
+/// claims QUEUED jobs (SELECT … FOR UPDATE SKIP LOCKED) and reports progress here.
+model ClipJob {
+  id            String         @id @default(cuid())
+  userId        String
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title         String?
+  sourceKind    ClipSourceKind
+  /// Object path in the "clip-sources" bucket (uploads)
+  sourcePath    String?
+  /// Link to the video (YouTube)
+  sourceUrl     String?
+  /// The user confirmed they own the linked content
+  ownsContent   Boolean        @default(false)
+  language      String         @default("te")
+  clipCount     Int            @default(5)
+  style         String         @default("clean")
+  captionPos    String         @default("bottom")
+  status        ClipJobStatus  @default(QUEUED)
+  /// Engine stage in progress: preparing, transcribing, finding_moments, rendering, uploading
+  stage         String?
+  /// 0–100
+  progress      Int            @default(0)
+  error         String?
+  attempts      Int            @default(0)
+  workerId      String?
+  heartbeatAt   DateTime?
+  startedAt     DateTime?
+  finishedAt    DateTime?
+  sourceSeconds Int?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @default(now()) @updatedAt
+  clips         Clip[]
+
+  @@index([status, createdAt])
+  @@index([userId, createdAt])
+}
+
+/// One finished short cut from a ClipJob, best first.
+model Clip {
+  id              String   @id @default(cuid())
+  jobId           String
+  job             ClipJob  @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  rank            Int
+  title           String
+  theme           String?
+  reason          String?
+  format          String?
+  hookScore       Float?
+  standaloneScore Float?
+  coherenceScore  Float?
+  finalScore      Float?
+  durationSec     Float?
+  /// Object paths in the "clip-renders" bucket
+  videoPath       String
+  captionsPath    String?
+  thumbPath       String?
+  rejected        Boolean  @default(false)
+  rejectReason    String?
+  createdAt       DateTime @default(now())
+
+  @@index([jobId, rank])
+}
+
+enum ClipJobStatus {
+  QUEUED
+  RUNNING
+  DONE
+  FAILED
+  CANCELLED
+}
+
+enum ClipSourceKind {
+  UPLOAD
+  YOUTUBE
+}
+
+/// What a business tells us once, so every promo reel after the first is quick.
+model BrandKit {
+  id         String   @id @default(cuid())
+  userId     String   @unique
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  brandName  String
+  handle     String?
+  /// One line about the business, in the owner's words
+  about      String?
+  location   String?
+  /// Brand colour, #RRGGBB
+  accent     String   @default("#3D7EFF")
+  /// Object path in the "brand-assets" bucket
+  logoPath   String?
+  /// Object paths in the "brand-assets" bucket, in display order (up to 6)
+  photoPaths String[] @default([])
+  language   String   @default("en")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @default(now()) @updatedAt
+}
+
+/// One promo reel render. A single "Generate" makes one job per chosen format, sharing a groupId.
+model ReelJob {
+  id          String        @id @default(cuid())
+  userId      String
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  groupId     String
+  template    String        @default("promo-classic")
+  /// vertical | portrait | wide
+  format      String
+  /// standard (30s) | short (15s)
+  length      String        @default("standard")
+  /// upbeat | calm | premium
+  music       String        @default("upbeat")
+  /// Template variables; logo/photos hold "brand-assets" object paths, not URLs
+  variables   Json
+  status      ClipJobStatus @default(QUEUED)
+  /// 0–100
+  progress    Int           @default(0)
+  error       String?
+  attempts    Int           @default(0)
+  workerId    String?
+  heartbeatAt DateTime?
+  startedAt   DateTime?
+  finishedAt  DateTime?
+  /// Object path in the "reel-renders" bucket
+  outputPath  String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @default(now()) @updatedAt
+
+  @@index([status, createdAt])
+  @@index([userId, createdAt])
+  @@index([groupId])
 }
