@@ -21,7 +21,7 @@ export const authConfig: NextAuthConfig = {
         const prisma = (await import("@/lib/prisma")).default;
         const user = await prisma.user.findUnique({
           where: { id: userId },
-          include: { igAccounts: true },
+          include: { igAccounts: { select: { igUsername: true, igProfilePic: true } } },
         });
         if (!user) return null;
 
