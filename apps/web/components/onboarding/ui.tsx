@@ -1,50 +1,65 @@
 "use client";
 
-import { ArrowLeft, ArrowRight, Check, Loader2, Plus, X } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { ArrowLeft, ArrowRight, Loader2, Plus, X } from "lucide-react";
+import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { STEPS } from "@/lib/onboarding/options";
 
-/** Logo, the five-step progress line and "Skip for now". */
-export function Header({ step, onSkip, skipping }: { step: number; onSkip: () => void; skipping: boolean }) {
+/** Logo and "Skip for now". Progress is the "Step N of 5" line above each title. */
+export function Header({ onSkip, skipping }: { onSkip: () => void; skipping: boolean }) {
   return (
-    <header className="flex items-center gap-6 px-4 pt-6 sm:px-8">
-      <span className="font-[Glitz,Poppins,sans-serif] text-[26px] leading-none text-app-ink">Zepply</span>
-      <ol className="mx-auto hidden items-start md:flex" aria-label="Setup progress">
-        {STEPS.map((s, i) => {
-          const n = i + 1;
-          const done = step > n;
-          const current = step === n;
-          return (
-            <li key={s.label} className="flex items-start" aria-current={current ? "step" : undefined}>
-              {i > 0 && <span className={`mt-[13px] h-px w-10 lg:w-16 ${step >= n ? "bg-app-ink" : "bg-app-line"}`} />}
-              <div className="flex w-[92px] flex-col items-center text-center">
-                <span
-                  className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold ${
-                    done ? "bg-electric text-white" : current ? "bg-app-ink text-white" : "border border-app-line bg-app-card text-app-muted"
-                  }`}
-                >
-                  {done ? <Check className="h-3.5 w-3.5" strokeWidth={3} /> : n}
-                </span>
-                <span className={`mt-2 text-xs leading-tight ${current ? "font-semibold text-app-ink" : "text-app-muted"}`}>
-                  {s.label}
-                  <br />
-                  {s.sub}
-                </span>
-              </div>
-            </li>
-          );
-        })}
-      </ol>
-      <span className="ml-auto text-xs font-medium text-app-muted md:hidden">Step {Math.min(step, STEPS.length)} of {STEPS.length}</span>
+    <header className="flex shrink-0 items-center justify-between px-4 pt-4 sm:px-8">
+      <span className="font-[Glitz,Poppins,sans-serif] text-[24px] leading-none text-app-ink">Zepply</span>
       <button
         type="button"
         onClick={onSkip}
         disabled={skipping}
-        className="shrink-0 rounded-full border border-app-line bg-app-card px-4 py-2 text-sm font-medium text-app-ink transition hover:border-app-ink/30 disabled:opacity-60 md:ml-0"
+        className="shrink-0 rounded-full border border-app-line bg-app-card px-4 py-1.5 text-sm font-medium text-app-ink transition hover:border-app-ink/30 disabled:opacity-60"
       >
         {skipping ? "Opening…" : "Skip for now"}
       </button>
     </header>
+  );
+}
+
+/** Below this, shrinking would make text too small: the step scrolls instead */
+const MIN_SCALE = 0.72;
+
+/**
+ * Fits a step into the screen on desktop (no page scrolling): if it's taller than the space
+ * under the header, it's scaled down to fit. Phones keep normal scrolling.
+ */
+export function FitFrame({ children }: { children: ReactNode }) {
+  const outer = useRef<HTMLDivElement>(null);
+  const inner = useRef<HTMLDivElement>(null);
+  const [fit, setFit] = useState<{ scale: number; height: number } | null>(null);
+
+  useLayoutEffect(() => {
+    const o = outer.current;
+    const i = inner.current;
+    if (!o || !i) return;
+    const measure = () => {
+      if (window.innerWidth < 1024) return setFit(null);
+      // offsetHeight ignores the transform, so this is always the natural height
+      const natural = i.offsetHeight;
+      const scale = Math.max(MIN_SCALE, Math.min(1, o.clientHeight / natural));
+      setFit((f) => (f && Math.abs(f.scale - scale) < 0.005 && f.height === natural ? f : { scale, height: natural }));
+    };
+    const observer = new ResizeObserver(measure);
+    observer.observe(o);
+    observer.observe(i);
+    measure();
+    return () => observer.disconnect();
+  }, []);
+
+  const scaled = fit && fit.scale < 1;
+  return (
+    <div ref={outer} className="min-h-0 flex-1 lg:overflow-y-auto">
+      <div style={scaled ? { height: fit.height * fit.scale, overflow: "hidden" } : undefined}>
+        <div ref={inner} style={scaled ? { transform: `scale(${fit.scale})`, transformOrigin: "top center" } : undefined}>
+          {children}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -55,7 +70,7 @@ export function Eyebrow({ step }: { step: number }) {
 /** Page title: plain words plus an optional serif accent, as on the landing page */
 export function Title({ children, accent, after }: { children: ReactNode; accent?: string; after?: string }) {
   return (
-    <h1 className="mt-3 font-display text-[clamp(34px,4.4vw,56px)] font-semibold leading-[1.04] tracking-[-0.035em] text-app-ink">
+    <h1 className="mt-2 font-display text-[clamp(30px,3.2vw,46px)] font-semibold leading-[1.05] tracking-[-0.035em] text-app-ink">
       {children}
       {accent && (
         <>
@@ -69,13 +84,13 @@ export function Title({ children, accent, after }: { children: ReactNode; accent
 }
 
 export function Lede({ children }: { children: ReactNode }) {
-  return <p className="mt-4 max-w-[560px] text-lg leading-relaxed text-app-muted">{children}</p>;
+  return <p className="mt-2.5 max-w-[660px] text-base leading-relaxed text-app-muted">{children}</p>;
 }
 
 export function SectionLabel({ children, note }: { children: ReactNode; note?: string }) {
   return (
-    <div className="mb-3 flex items-baseline justify-between gap-4">
-      <h2 className="text-[15px] font-semibold text-app-ink">{children}</h2>
+    <div className="mb-2 flex items-baseline justify-between gap-4">
+      <h2 className="text-[14px] font-semibold text-app-ink">{children}</h2>
       {note && <span className="text-xs text-app-faint">{note}</span>}
     </div>
   );
@@ -103,14 +118,14 @@ export function Choice({
       role={multi ? "checkbox" : "radio"}
       aria-checked={selected}
       onClick={onClick}
-      className={`group flex h-full items-start gap-3 rounded-2xl border p-4 text-left transition ${
+      className={`group flex h-full items-start gap-2.5 rounded-xl border px-3.5 py-3 text-left transition ${
         selected ? "border-electric bg-electric-wash/40 ring-1 ring-electric" : "border-app-line bg-app-card hover:border-app-ink/25"
       }`}
     >
-      {icon && <span className={`mt-0.5 shrink-0 ${selected ? "text-electric" : "text-app-ink"}`}>{icon}</span>}
+      {icon && <span className={`mt-px shrink-0 ${selected ? "text-electric" : "text-app-ink"}`}>{icon}</span>}
       <span className="min-w-0">
-        <span className="block text-[15px] font-semibold text-app-ink">{title}</span>
-        {hint && <span className="mt-1 block text-sm leading-snug text-app-muted">{hint}</span>}
+        <span className="block text-[14px] font-semibold leading-snug text-app-ink">{title}</span>
+        {hint && <span className="mt-0.5 block text-[13px] leading-snug text-app-muted">{hint}</span>}
       </span>
     </button>
   );
@@ -119,7 +134,7 @@ export function Choice({
 export function Field({ label, htmlFor, children }: { label: string; htmlFor?: string; children: ReactNode }) {
   return (
     <div>
-      <label htmlFor={htmlFor} className="mb-2 block text-[15px] font-semibold text-app-ink">
+      <label htmlFor={htmlFor} className="mb-1.5 block text-[14px] font-semibold text-app-ink">
         {label}
       </label>
       {children}
@@ -128,7 +143,7 @@ export function Field({ label, htmlFor, children }: { label: string; htmlFor?: s
 }
 
 export const inputClass =
-  "h-13 w-full rounded-xl border border-app-line bg-app-card px-4 text-[15px] text-app-ink outline-none transition placeholder:text-app-faint focus:border-electric focus:ring-2 focus:ring-electric/20";
+  "h-11 w-full rounded-xl border border-app-line bg-app-card px-4 text-[15px] text-app-ink outline-none transition placeholder:text-app-faint focus:border-electric focus:ring-2 focus:ring-electric/20";
 
 /** Editable list of short tags: remove with ×, add by typing and pressing Enter. */
 export function TagEditor({ tags, onChange, max, placeholder }: { tags: string[]; onChange: (next: string[]) => void; max: number; placeholder: string }) {
@@ -179,6 +194,7 @@ export function Nav({
   disabled,
   busy,
   error,
+  extra,
 }: {
   onBack?: () => void;
   onNext: () => void;
@@ -186,11 +202,13 @@ export function Nav({
   disabled?: boolean;
   busy?: boolean;
   error?: string | null;
+  /** A secondary action shown after the main button */
+  extra?: ReactNode;
 }) {
   return (
-    <div className="mt-10">
+    <div className="mt-7">
       {error && (
-        <p role="alert" className="mb-4 text-sm text-red-600">
+        <p role="alert" className="mb-3 text-sm text-red-600">
           {error}
         </p>
       )}
@@ -204,11 +222,12 @@ export function Nav({
           type="button"
           onClick={onNext}
           disabled={disabled || busy}
-          className="inline-flex h-13 min-w-[220px] items-center justify-center gap-2 rounded-xl bg-app-ink px-8 text-[15px] font-semibold text-white shadow-[0_10px_30px_-12px_rgba(22,22,26,0.6)] transition hover:bg-black disabled:cursor-not-allowed disabled:bg-app-faint disabled:shadow-none"
+          className="inline-flex h-12 min-w-[200px] items-center justify-center gap-2 rounded-xl bg-app-ink px-7 text-[15px] font-semibold text-white shadow-[0_10px_30px_-12px_rgba(22,22,26,0.6)] transition hover:bg-black disabled:cursor-not-allowed disabled:bg-app-faint disabled:shadow-none"
         >
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
           {nextLabel} {!busy && <ArrowRight className="h-4 w-4" />}
         </button>
+        {extra}
       </div>
     </div>
   );
@@ -216,7 +235,7 @@ export function Nav({
 
 /** A handwritten note with a curved arrow, as on the landing page */
 export function HandNote({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <p className={`font-hand text-[22px] leading-tight text-app-muted ${className}`}>{children}</p>;
+  return <p className={`font-hand text-[20px] leading-tight text-app-muted ${className}`}>{children}</p>;
 }
 
 export async function api<T>(url: string, init?: RequestInit & { json?: unknown }): Promise<T> {

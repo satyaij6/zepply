@@ -44,19 +44,19 @@ export function StepConnect({
   const hasSomething = !!instagram || !!kit?.logoPath || (kit?.photoPaths.length ?? 0) > 0;
 
   return (
-    <div className="mx-auto grid max-w-[1240px] gap-12 lg:grid-cols-[minmax(0,1fr)_480px]">
+    <div className="mx-auto grid max-w-[1240px] gap-10 lg:grid-cols-[minmax(0,1fr)_420px]">
       <div>
         <Eyebrow step={3} />
         <Title accent="learn your brand from?">Where should Zepply</Title>
         <Lede>Connect your Instagram and we&apos;ll do the digging: your logo, colours, tone of voice, audience and content style.</Lede>
 
-        <div role="tablist" className="mt-10 grid gap-3 sm:grid-cols-3">
+        <div role="tablist" className="mt-6 grid gap-3 sm:grid-cols-3">
           <TabButton active={tab === "accounts"} onClick={() => setTab("accounts")} icon={<LayoutGrid className="h-5 w-5" />} label="Connect accounts" />
           <TabButton active={tab === "upload"} onClick={() => setTab("upload")} icon={<ImagePlus className="h-5 w-5" />} label="Upload assets" />
           <TabButton active={tab === "link"} onClick={() => setTab("link")} icon={<Link2 className="h-5 w-5" />} label="Website link" soon />
         </div>
 
-        <div className="mt-6">
+        <div className="mt-4">
           {tab === "accounts" && <Accounts instagram={instagram} connectError={connectError} />}
           {tab === "upload" && <Uploads kit={kit} setKit={setKit} />}
           {tab === "link" && (
@@ -67,7 +67,7 @@ export function StepConnect({
           )}
         </div>
 
-        <p className="mt-6 flex items-center gap-3 rounded-2xl bg-emerald-50 px-5 py-4 text-sm text-emerald-900">
+        <p className="mt-4 flex items-center gap-3 rounded-2xl bg-emerald-50 px-5 py-3 text-sm text-emerald-900">
           <ShieldCheck className="h-5 w-5 shrink-0 text-emerald-600" />
           We use Instagram&apos;s official API. We never see your password, and your access is stored encrypted.
         </p>
@@ -94,7 +94,7 @@ function TabButton({ active, onClick, icon, label, soon }: { active: boolean; on
       role="tab"
       aria-selected={active}
       onClick={onClick}
-      className={`flex h-14 items-center justify-center gap-2.5 rounded-xl border px-4 text-[15px] font-semibold transition ${
+      className={`flex h-12 items-center justify-center gap-2.5 rounded-xl border px-4 text-[14px] font-semibold transition ${
         active ? "border-electric bg-electric-wash/40 text-app-ink ring-1 ring-electric" : "border-app-line bg-app-card text-app-ink hover:border-app-ink/25"
       }`}
     >
@@ -114,7 +114,7 @@ function Accounts({ instagram, connectError }: { instagram: OnboardingState["ins
           {message}
         </p>
       )}
-      <div className={`flex items-center gap-4 rounded-2xl border p-5 ${instagram ? "border-emerald-300 bg-emerald-50/50" : "border-app-line bg-app-card"}`}>
+      <div className={`flex items-center gap-4 rounded-2xl border px-5 py-4 ${instagram ? "border-emerald-300 bg-emerald-50/50" : "border-app-line bg-app-card"}`}>
         <InstagramGlyph />
         <div className="min-w-0 flex-1">
           {instagram ? (
@@ -145,7 +145,7 @@ function Accounts({ instagram, connectError }: { instagram: OnboardingState["ins
       </div>
       <div className="grid gap-3 sm:grid-cols-3">
         {["YouTube", "TikTok", "Facebook"].map((p) => (
-          <div key={p} className="flex items-center justify-between rounded-2xl border border-app-line bg-app-card px-4 py-4 text-app-faint">
+          <div key={p} className="flex items-center justify-between rounded-2xl border border-app-line bg-app-card px-4 py-3 text-app-faint">
             <span className="font-medium">{p}</span>
             <span className="rounded-full bg-app-bg px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide">Soon</span>
           </div>
@@ -211,23 +211,23 @@ function Uploads({ kit, setKit }: { kit: BrandKitView | null | undefined; setKit
   }
 
   return (
-    <div className="grid gap-4 rounded-2xl border border-app-line bg-app-card p-5 sm:grid-cols-[160px_minmax(0,1fr)]">
+    <div className="grid gap-4 rounded-2xl border border-app-line bg-app-card px-5 py-4 sm:grid-cols-[96px_minmax(0,1fr)]">
       <div>
-        <p className="mb-2 text-sm font-semibold text-app-ink">Logo</p>
+        <p className="mb-1.5 text-sm font-semibold text-app-ink">Logo</p>
         <button
           type="button"
           onClick={() => logoInput.current?.click()}
           className="relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-2xl border border-dashed border-app-line bg-app-bg text-app-muted hover:border-app-ink/30"
         >
-          {kit.logoUrl ? <Image src={kit.logoUrl} alt="Your logo" fill sizes="160px" className="object-contain p-3" unoptimized /> : busy === "logo" ? <Loader2 className="h-5 w-5 animate-spin" /> : <Upload className="h-5 w-5" />}
+          {kit.logoUrl ? <Image src={kit.logoUrl} alt="Your logo" fill sizes="96px" className="object-contain p-2" unoptimized /> : busy === "logo" ? <Loader2 className="h-5 w-5 animate-spin" /> : <Upload className="h-5 w-5" />}
         </button>
         <input ref={logoInput} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={(e) => add("logo", e.target.files)} />
       </div>
       <div>
-        <p className="mb-2 text-sm font-semibold text-app-ink">
+        <p className="mb-1.5 text-sm font-semibold text-app-ink">
           Photos <span className="font-normal text-app-faint">({kit.photos.length}/{MAX_PHOTOS})</span>
         </p>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-6 gap-2">
           {kit.photos.map((p) => (
             <div key={p.path} className="group relative aspect-square overflow-hidden rounded-xl">
               <Image src={p.url} alt="" fill sizes="120px" className="object-cover" unoptimized />
@@ -274,11 +274,11 @@ function InstagramGlyph() {
 function AnalysisIllustration() {
   const rows = ["Fetching your visual identity", "Understanding your tone of voice", "Identifying your audience", "Finding what you offer"];
   return (
-    <div className="relative pt-6">
+    <div className="relative pt-1">
       <HandNote className="ml-auto max-w-[200px] rotate-3 text-right">One connection. We&apos;ll find the rest.</HandNote>
-      <div className="mt-4 rounded-3xl border border-app-line bg-app-card p-6 shadow-[0_30px_60px_-30px_rgba(0,0,0,0.25)]">
+      <div className="mt-3 rounded-3xl border border-app-line bg-app-card px-5 py-4 shadow-[0_30px_60px_-30px_rgba(0,0,0,0.25)]">
         <p className="font-semibold text-app-ink">Analysing your brand…</p>
-        <ul className="mt-4 space-y-3">
+        <ul className="mt-3 space-y-2">
           {rows.map((r, i) => (
             <li key={r} className="flex items-center gap-3 text-sm text-app-ink">
               <span className={`flex h-5 w-5 items-center justify-center rounded-full ${i < 3 ? "bg-electric text-white" : "border-2 border-electric/40 border-t-electric"}`}>
@@ -289,11 +289,11 @@ function AnalysisIllustration() {
           ))}
         </ul>
       </div>
-      <div className="relative mt-6 grid grid-cols-[1.1fr_1fr] gap-4">
-        <div className="relative aspect-[4/5] -rotate-3 overflow-hidden rounded-3xl shadow-lg">
+      <div className="relative mt-4 grid grid-cols-[1.1fr_1fr] gap-4">
+        <div className="relative aspect-[4/4.6] -rotate-3 overflow-hidden rounded-3xl shadow-lg">
           <Image src="/landing/space.jpg" alt="" fill sizes="240px" className="object-cover" />
         </div>
-        <div className="space-y-4 pt-6">
+        <div className="space-y-3 pt-3">
           <div className="rounded-2xl border border-app-line bg-app-card p-4">
             <p className="text-sm font-semibold text-app-ink">Tone of voice</p>
             <div className="mt-2 flex flex-wrap gap-1.5">
@@ -309,12 +309,12 @@ function AnalysisIllustration() {
               <span key={c} className="h-9 flex-1 rounded-lg ring-1 ring-black/5" style={{ background: c }} />
             ))}
           </div>
-          <div className="relative aspect-square rotate-3 overflow-hidden rounded-2xl shadow-md">
+          <div className="relative aspect-[4/3] rotate-3 overflow-hidden rounded-2xl shadow-md">
             <Image src="/landing/latte.jpg" alt="" fill sizes="200px" className="object-cover" />
           </div>
         </div>
       </div>
-      <HandNote className="mt-4 max-w-[220px] -rotate-2">Editable later in your brand kit.</HandNote>
+      <HandNote className="mt-3 max-w-[260px] -rotate-2">Editable later in your brand kit.</HandNote>
     </div>
   );
 }

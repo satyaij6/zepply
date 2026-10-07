@@ -11,7 +11,8 @@ type DraftJson = Omit<Draft, "createdAt" | "updatedAt"> & { createdAt: string; u
 
 const KIND_LABEL: Record<Draft["kind"], string> = { POST: "Instagram post", CAROUSEL: "Carousel post", REEL: "Reel cover" };
 
-export const imageUrl = (d: DraftJson, slide = 0) => `/api/drafts/${d.id}/image?slide=${slide}&v=${new Date(d.updatedAt).getTime()}`;
+export const imageUrl = (d: DraftJson, slide = 0, square = false) =>
+  `/api/drafts/${d.id}/image?slide=${slide}&v=${new Date(d.updatedAt).getTime()}${square ? "&format=square" : ""}`;
 
 export function StepContent({ onBack, onNext }: { onBack: () => void; onNext: (drafts: DraftJson[]) => void }) {
   const [drafts, setDrafts] = useState<DraftJson[] | null>(null);
@@ -44,17 +45,17 @@ export function StepContent({ onBack, onNext }: { onBack: () => void; onNext: (d
   const replace = (d: DraftJson) => setDrafts((list) => list?.map((x) => (x.id === d.id ? d : x)) ?? null);
 
   return (
-    <div className="mx-auto grid max-w-[1380px] gap-10 xl:grid-cols-[minmax(0,1fr)_320px]">
+    <div className="mx-auto grid max-w-[1380px] gap-8 xl:grid-cols-[minmax(0,1fr)_300px]">
       <div>
         <Eyebrow step={5} />
         <Title after=".">Let&apos;s make something</Title>
-        <Lede>We wrote three sample posts from your brand kit and your own photos. They&apos;re free, and you can edit anything.</Lede>
+        <Lede>Three free sample posts from your brand kit and your own photos. Edit anything.</Lede>
 
         {writing || (!drafts && !error) ? (
-          <div className="mt-10 grid gap-5 md:grid-cols-3">
+          <div className="mt-6 grid gap-4 md:grid-cols-3">
             {[0, 1, 2].map((i) => (
               <div key={i} className="overflow-hidden rounded-3xl border border-app-line bg-app-card">
-                <div className="aspect-[4/5] animate-pulse bg-app-bg" />
+                <div className="aspect-square animate-pulse bg-app-bg" />
                 <div className="space-y-2 p-5">
                   <div className="h-3 w-3/4 animate-pulse rounded bg-app-bg" />
                   <div className="h-3 w-1/2 animate-pulse rounded bg-app-bg" />
@@ -66,28 +67,36 @@ export function StepContent({ onBack, onNext }: { onBack: () => void; onNext: (d
             </p>
           </div>
         ) : drafts ? (
-          <div className="mt-10 grid gap-5 md:grid-cols-3">
+          <div className="mt-6 grid gap-4 md:grid-cols-3">
             {drafts.map((d, i) => (
               <PostCard key={d.id} draft={d} number={i + 1} onChange={replace} />
             ))}
           </div>
         ) : null}
 
-        {drafts && !writing && (
-          <button type="button" onClick={write} className="mt-5 inline-flex items-center gap-1.5 text-sm font-medium text-electric hover:underline">
-            <RefreshCw className="h-3.5 w-3.5" /> Write three new ones
-          </button>
-        )}
-
-        <Nav onBack={onBack} onNext={() => drafts && onNext(drafts)} disabled={!drafts?.length} busy={writing} error={error} />
+        <Nav
+          onBack={onBack}
+          onNext={() => drafts && onNext(drafts)}
+          disabled={!drafts?.length}
+          busy={writing}
+          error={error}
+          extra={
+            drafts &&
+            !writing && (
+              <button type="button" onClick={write} className="inline-flex items-center gap-1.5 text-sm font-medium text-electric hover:underline">
+                <RefreshCw className="h-3.5 w-3.5" /> Write three new ones
+              </button>
+            )
+          }
+        />
       </div>
 
-      <aside className="space-y-4">
-        <div className="rounded-3xl border border-app-line bg-app-card p-6">
+      <aside className="space-y-3">
+        <div className="rounded-3xl border border-app-line bg-app-card px-5 py-4">
           <h3 className="flex items-center gap-2 font-semibold text-app-ink">
             <Sparkles className="h-4 w-4 text-electric" /> These posts are just the beginning
           </h3>
-          <ul className="mt-4 space-y-2.5 text-sm text-app-ink">
+          <ul className="mt-3 space-y-2 text-sm text-app-ink">
             {["Created from your brand kit", "Written in your language", "Tailored to your audience", "Edit, rewrite or copy them"].map((t) => (
               <li key={t} className="flex items-center gap-2.5">
                 <Check className="h-4 w-4 text-electric" strokeWidth={3} /> {t}
@@ -95,15 +104,15 @@ export function StepContent({ onBack, onNext }: { onBack: () => void; onNext: (d
             ))}
           </ul>
         </div>
-        <div className="rounded-3xl border border-app-line bg-app-card p-6">
+        <div className="rounded-3xl border border-app-line bg-app-card px-5 py-4">
           <h3 className="flex items-center gap-2 font-semibold text-app-ink">
             <Lightbulb className="h-4 w-4 text-amber-500" /> Tip
           </h3>
           <p className="mt-2 text-sm leading-relaxed text-app-muted">Copy a caption, save the image and post it today. Your first post is the hardest one.</p>
         </div>
-        <div className="rounded-3xl border border-app-line bg-app-card p-6">
+        <div className="rounded-3xl border border-app-line bg-app-card px-5 py-4">
           <h3 className="font-semibold text-app-ink">What&apos;s next</h3>
-          <ul className="mt-4 space-y-4">
+          <ul className="mt-3 space-y-3">
             <Next icon={<MessageCircle className="h-4 w-4" />} title="Reply automatically" sub="Turn comments into DMs and leads" />
             <Next icon={<BarChart3 className="h-4 w-4" />} title="Track your growth" sub="See what's working" />
             <Next icon={<CalendarDays className="h-4 w-4" />} title="A full content calendar" sub="Weeks of ideas, planned for you" soon />
@@ -175,7 +184,7 @@ function PostCard({ draft, number, onChange }: { draft: DraftJson; number: numbe
 
   return (
     <article className="flex flex-col overflow-hidden rounded-3xl border border-app-line bg-app-card">
-      <header className="flex items-center gap-3 px-5 py-4">
+      <header className="flex items-center gap-3 px-4 py-3">
         <span className="h-8 w-8 rounded-xl bg-[radial-gradient(circle_at_30%_110%,#FFDB73_0%,#FD5949_45%,#D6249F_65%,#285AEB_100%)]" />
         <span>
           <span className="block text-sm font-semibold text-app-ink">Post {String(number).padStart(2, "0")}</span>
@@ -183,9 +192,9 @@ function PostCard({ draft, number, onChange }: { draft: DraftJson; number: numbe
         </span>
       </header>
 
-      <div className="relative mx-4 aspect-[4/5] overflow-hidden rounded-2xl bg-app-bg">
+      <div className="relative mx-4 aspect-square overflow-hidden rounded-2xl bg-app-bg">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={imageUrl(draft, slide)} alt={draft.headline} className="h-full w-full object-cover" />
+        <img src={imageUrl(draft, slide, true)} alt={draft.headline} className="h-full w-full object-cover" />
         {busy === "regen" && (
           <div className="absolute inset-0 flex items-center justify-center bg-white/60">
             <Loader2 className="h-6 w-6 animate-spin text-app-ink" />
@@ -208,7 +217,7 @@ function PostCard({ draft, number, onChange }: { draft: DraftJson; number: numbe
         )}
       </div>
 
-      <div className="flex flex-1 flex-col px-5 pb-5 pt-4">
+      <div className="flex flex-1 flex-col px-4 pb-4 pt-3">
         {editing ? (
           <div className="space-y-2">
             <input value={form.headline} onChange={(e) => setForm({ ...form, headline: e.target.value })} maxLength={48} aria-label="Headline" className="w-full rounded-lg border border-app-line px-3 py-2 text-sm font-semibold outline-none focus:border-electric" />
@@ -217,14 +226,14 @@ function PostCard({ draft, number, onChange }: { draft: DraftJson; number: numbe
           </div>
         ) : (
           <>
-            <p className="whitespace-pre-line text-sm leading-relaxed text-app-ink">{draft.caption}</p>
-            <p className="mt-2 text-sm leading-relaxed text-electric">{tags}</p>
+            <p className="line-clamp-2 text-sm leading-relaxed text-app-ink" title={draft.caption}>{draft.caption.replace(/\s*\n+\s*/g, " ")}</p>
+            <p className="mt-1.5 line-clamp-1 text-sm text-electric" title={tags}>{tags}</p>
           </>
         )}
-        <span className="mt-4 w-fit rounded-full bg-app-bg px-3 py-1 text-xs font-medium text-app-ink">{language}</span>
+        <span className="mt-2.5 w-fit rounded-full bg-app-bg px-3 py-0.5 text-xs font-medium text-app-ink">{language}</span>
         {error && <p className="mt-3 text-xs text-red-600">{error}</p>}
 
-        <div className="mt-auto flex gap-2 pt-4">
+        <div className="mt-auto flex gap-2 pt-3">
           {editing ? (
             <>
               <ActionButton onClick={save} busy={busy === "save"} icon={<Check className="h-4 w-4" />} label="Save" />
@@ -257,7 +266,7 @@ function ActionButton({ onClick, icon, label, busy }: { onClick: () => void; ico
       type="button"
       onClick={onClick}
       disabled={busy}
-      className="inline-flex h-10 flex-1 items-center justify-center gap-1.5 rounded-xl border border-app-line text-sm font-medium text-app-ink transition hover:bg-app-bg disabled:opacity-60"
+      className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-xl border border-app-line text-sm font-medium text-app-ink transition hover:bg-app-bg disabled:opacity-60"
     >
       {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : icon}
       {label}

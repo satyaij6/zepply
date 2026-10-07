@@ -7,7 +7,8 @@ import { postFonts } from "@/lib/onboarding/fonts";
 import { REEL_BUCKETS } from "@/lib/reels/options";
 import { downloadObject } from "@/lib/storage";
 
-// GET — A draft drawn as an image: ?slide=0 is the post, carousel cover or Reel cover; carousels go up to ?slide=4
+// GET — A draft drawn as an image: ?slide=0 is the post, carousel cover or Reel cover; carousels go up to ?slide=4.
+// ?format=square draws a 1:1 version (same design, re-laid out) for compact previews.
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { userId, error } = await requireUserId();
   if (error) return error;
@@ -21,15 +22,16 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const [photo, logo] = await Promise.all([dataUri(photoPath), dataUri(kit.logoPath)]);
 
   const reel = draft.kind === "REEL";
-  const size = reel ? { width: 1080, height: 1920 } : { width: 1080, height: 1350 };
+  const square = request.nextUrl.searchParams.get("format") === "square";
+  const size = { width: 1080, height: square ? 1080 : reel ? 1920 : 1350 };
   const label = slide > 0 ? draft.slides[slide - 1] : null;
   const body = [kit.brandName, kit.handle ? `@${kit.handle}` : "", label ?? "", "Swipe"].join(" ");
 
   const image = new ImageResponse(
     label !== null ? (
-      <Slide kit={kit} photo={photo} label={label} index={slide} total={draft.slides.length + 1} />
+      <Slide kit={kit} photo={photo} label={label} index={slide} total={draft.slides.length + 1} height={size.height} />
     ) : (
-      <Cover draft={draft} kit={kit} photo={photo} logo={logo} reel={reel} />
+      <Cover draft={draft} kit={kit} photo={photo} logo={logo} reel={reel} height={size.height} />
     ),
     { ...size, fonts: await postFonts(kit.font, label ? "" : draft.headline, body) },
   );
@@ -66,12 +68,14 @@ function Backdrop({ photo, color, height }: { photo: string | null; color: strin
 }
 
 /** Post, carousel cover and Reel cover: photo, a dark fade, the logo and name, and the headline. */
-function Cover({ draft, kit, photo, logo, reel }: { draft: Draft; kit: BrandKit; photo: string | null; logo: string | null; reel: boolean }) {
+function Cover({ draft, kit, photo, logo, reel, height }: { draft: Draft; kit: BrandKit; photo: string | null; logo: string | null; reel: boolean; height: number }) {
+  // Full-size Reel covers keep text inside the middle area profiles show; other sizes use the edges
+  const tall = height === 1920;
   const { primary, second } = palette(kit);
   const carousel = draft.kind === "CAROUSEL";
   return (
     <div style={{ position: "relative", display: "flex", width: "100%", height: "100%", fontFamily: "Body, Script" }}>
-      <Backdrop photo={photo} color={primary} height={reel ? 1920 : 1350} />
+      <Backdrop photo={photo} color={primary} height={height} />
       <div
         style={{
           position: "absolute",
@@ -82,7 +86,7 @@ function Cover({ draft, kit, photo, logo, reel }: { draft: Draft; kit: BrandKit;
       />
 
       {/* Reels show cropped to the middle on profiles, so their text stays inside that safe zone */}
-      <div style={{ position: "absolute", top: reel ? 300 : 64, left: 64, right: 64, display: "flex", alignItems: "center", gap: 20 }}>
+      <div style={{ position: "absolute", top: tall ? 300 : 64, left: 64, right: 64, display: "flex", alignItems: "center", gap: 20 }}>
         {logo && (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={logo} alt="" width={84} height={84} style={{ width: 84, height: 84, borderRadius: 42, objectFit: "cover", border: "3px solid rgba(255,255,255,0.9)" }} />
@@ -100,9 +104,9 @@ function Cover({ draft, kit, photo, logo, reel }: { draft: Draft; kit: BrandKit;
         </div>
       )}
 
-      <div style={{ position: "absolute", left: 64, right: 64, bottom: reel ? 340 : 88, display: "flex", flexDirection: "column", gap: 28 }}>
+      <div style={{ position: "absolute", left: 64, right: 64, bottom: tall ? 340 : 80, display: "flex", flexDirection: "column", gap: 28 }}>
         <div style={{ display: "flex", width: 120, height: 12, borderRadius: 6, background: second }} />
-        <div style={{ display: "flex", fontFamily: "Headline, Script", fontSize: reel ? 128 : 112, lineHeight: 1.02, color: "#FFFFFF", letterSpacing: -2 }}>
+        <div style={{ display: "flex", fontFamily: "Headline, Script", fontSize: tall ? 128 : height === 1080 ? 100 : 112, lineHeight: 1.02, color: "#FFFFFF", letterSpacing: -2 }}>
           {draft.headline}
         </div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 30, color: "rgba(255,255,255,0.85)" }}>
@@ -117,11 +121,11 @@ function Cover({ draft, kit, photo, logo, reel }: { draft: Draft; kit: BrandKit;
 }
 
 /** A carousel slide after the cover: photo, a label in the brand colour, and the slide count. */
-function Slide({ kit, photo, label, index, total }: { kit: BrandKit; photo: string | null; label: string; index: number; total: number }) {
+function Slide({ kit, photo, label, index, total, height }: { kit: BrandKit; photo: string | null; label: string; index: number; total: number; height: number }) {
   const { primary, onPrimary } = palette(kit);
   return (
     <div style={{ position: "relative", display: "flex", width: "100%", height: "100%", fontFamily: "Body, Script" }}>
-      <Backdrop photo={photo} color={primary} height={1350} />
+      <Backdrop photo={photo} color={primary} height={height} />
       <div style={{ position: "absolute", top: 56, right: 56, display: "flex", padding: "12px 24px", borderRadius: 999, background: "rgba(0,0,0,0.45)", color: "#FFFFFF", fontSize: 28 }}>
         {`${index + 1}/${total}`}
       </div>
