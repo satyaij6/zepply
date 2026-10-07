@@ -113,13 +113,13 @@ export function StepBrandKit({
   if (working || !kit) return <Analysing failed={!working && !kit ? error : null} onRetry={run} />;
 
   return (
-    <div className="mx-auto grid max-w-[1320px] gap-10 xl:grid-cols-[minmax(0,1fr)_520px]">
+    <div className="mx-auto grid max-w-[1320px] gap-8 xl:grid-cols-[minmax(0,1fr)_420px]">
       <div>
         <Eyebrow step={4} />
         <Title accent="your brand.">Here&apos;s what we learned about</Title>
-        <Lede>We built a brand kit from what you shared. Change anything that isn&apos;t quite right.</Lede>
+        <Lede>We built a brand kit from what you shared. Change anything here now, or later in Brand Kit.</Lede>
 
-        <div className="mt-10 grid gap-4 md:grid-cols-[minmax(0,0.8fr)_minmax(0,1fr)_minmax(0,1fr)]">
+        <div className="mt-5 grid gap-3 md:grid-cols-[minmax(0,0.7fr)_minmax(0,1fr)_minmax(0,1fr)]">
           <LogoCard kit={kit} onChange={update} />
           <Card title="Brand colours">
             <div className="grid grid-cols-4 gap-2">
@@ -145,7 +145,7 @@ export function StepBrandKit({
           <FontCard value={kit.font} onChange={(font) => update({ font })} />
         </div>
 
-        <div className="mt-4 grid gap-4 md:grid-cols-2">
+        <div className="mt-3 grid gap-3 md:grid-cols-2">
           <Card title="Brand voice">
             <TagEditor tags={kit.voice} onChange={(voice) => update({ voice })} max={MAX_TAGS} placeholder="Add a word" />
           </Card>
@@ -153,7 +153,7 @@ export function StepBrandKit({
             <textarea
               value={kit.audience ?? ""}
               onChange={(e) => update({ audience: e.target.value })}
-              rows={3}
+              rows={2}
               maxLength={300}
               className="w-full resize-none rounded-xl border border-transparent bg-app-bg px-3 py-2 text-sm leading-relaxed text-app-ink outline-none focus:border-electric"
             />
@@ -174,16 +174,18 @@ export function StepBrandKit({
           </Card>
         </div>
 
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-electric-wash/50 px-5 py-4">
-          <p className="text-sm text-app-ink">
-            <span className="font-semibold">Looks good?</span> You can change all of this later in Brand Kit.
-          </p>
-          <button type="button" onClick={run} className="inline-flex items-center gap-1.5 text-sm font-medium text-electric hover:underline">
-            <RefreshCw className="h-3.5 w-3.5" /> Analyse again
-          </button>
-        </div>
-
-        <Nav onBack={onBack} onNext={next} busy={saving} error={error} nextLabel="Looks good, continue" />
+        <Nav
+          onBack={onBack}
+          onNext={next}
+          busy={saving}
+          error={error}
+          nextLabel="Looks good, continue"
+          extra={
+            <button type="button" onClick={run} className="inline-flex items-center gap-1.5 text-sm font-medium text-electric hover:underline">
+              <RefreshCw className="h-3.5 w-3.5" /> Analyse again
+            </button>
+          }
+        />
       </div>
 
       <aside>
@@ -195,9 +197,9 @@ export function StepBrandKit({
 
 function Card({ title, icon, action, children }: { title: string; icon?: React.ReactNode; action?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <section className="rounded-2xl border border-app-line bg-app-card p-5">
-      <div className="mb-4 flex items-center justify-between">
-        <h3 className="flex items-center gap-2 text-[15px] font-semibold text-app-ink">
+    <section className="rounded-2xl border border-app-line bg-app-card px-4 py-3.5">
+      <div className="mb-2.5 flex items-center justify-between">
+        <h3 className="flex items-center gap-2 text-[14px] font-semibold text-app-ink">
           {icon && <span className="text-electric">{icon}</span>}
           {title}
         </h3>
@@ -224,7 +226,7 @@ function LogoCard({ kit, onChange }: { kit: BrandKitView; onChange: (p: Partial<
       <button
         type="button"
         onClick={() => input.current?.click()}
-        className="relative flex aspect-square w-full max-w-[150px] items-center justify-center overflow-hidden rounded-2xl bg-app-bg text-app-muted"
+        className="relative flex aspect-square w-full max-w-[104px] items-center justify-center overflow-hidden rounded-2xl bg-app-bg text-app-muted"
       >
         {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : kit.logoUrl ? <Image src={kit.logoUrl} alt="Your logo" fill sizes="150px" className="object-cover" unoptimized /> : <Upload className="h-5 w-5" />}
       </button>
@@ -285,7 +287,7 @@ function FontCard({ value, onChange }: { value: string | null; onChange: (font: 
         </ul>
       ) : (
         <div className="flex items-center gap-4">
-          <span className="text-5xl leading-none text-app-ink" style={{ fontFamily: FONT_CSS[font.value] }}>
+          <span className="text-4xl leading-none text-app-ink" style={{ fontFamily: FONT_CSS[font.value] }}>
             Aa
           </span>
           <span>
@@ -307,7 +309,7 @@ function Preview({ kit }: { kit: BrandKitView }) {
   const font = FONT_CSS[kit.font ?? "inter-tight"];
 
   return (
-    <div className="rounded-3xl border border-app-line bg-app-card p-6 xl:sticky xl:top-8">
+    <div className="rounded-3xl border border-app-line bg-app-card p-5">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 className="font-semibold text-app-ink">Preview</h2>
@@ -328,7 +330,7 @@ function Preview({ kit }: { kit: BrandKitView }) {
         </div>
       </div>
 
-      <div className="relative mx-auto mt-6 aspect-[4/5] w-full max-w-[340px] overflow-hidden rounded-2xl shadow-[0_24px_50px_-24px_rgba(0,0,0,0.55)]" style={{ background: primary }}>
+      <div className="relative mx-auto mt-3 aspect-[4/5] w-full max-w-[236px] overflow-hidden rounded-2xl shadow-[0_24px_50px_-24px_rgba(0,0,0,0.55)]" style={{ background: primary }}>
         {photos.length > 0 && <Image src={photos[index % photos.length].url} alt="" fill sizes="340px" className="object-cover" unoptimized />}
         <div className="absolute inset-0 bg-linear-to-b from-black/35 via-transparent to-black/75" />
         <div className="absolute left-4 top-4 flex items-center gap-2">
@@ -337,7 +339,7 @@ function Preview({ kit }: { kit: BrandKitView }) {
         </div>
         <div className="absolute bottom-5 left-5 right-5">
           <span className="block h-1.5 w-12 rounded-full" style={{ background: second }} />
-          <p className="mt-3 text-[30px] leading-[1.02] text-white" style={{ fontFamily: font }}>
+          <p className="mt-2 text-[23px] leading-[1.02] text-white" style={{ fontFamily: font }}>
             {headlines[index % headlines.length]}
           </p>
           {kit.handle && <p className="mt-2 text-xs text-white/80">@{kit.handle}</p>}
@@ -346,8 +348,8 @@ function Preview({ kit }: { kit: BrandKitView }) {
 
       {photos.length > 0 && (
         <>
-          <h3 className="mt-6 text-sm font-semibold text-app-ink">Content style</h3>
-          <div className="mt-3 grid grid-cols-5 gap-2">
+          <h3 className="mt-4 text-sm font-semibold text-app-ink">Content style</h3>
+          <div className="mt-2 grid grid-cols-5 gap-2">
             {photos.slice(0, 5).map((p) => (
               <div key={p.path} className="relative aspect-square overflow-hidden rounded-lg">
                 <Image src={p.url} alt="" fill sizes="80px" loading="eager" className="object-cover" unoptimized />
@@ -356,7 +358,7 @@ function Preview({ kit }: { kit: BrandKitView }) {
           </div>
         </>
       )}
-      <p className="mt-6 rounded-2xl bg-app-bg px-4 py-3 text-sm text-app-muted">
+      <p className="mt-4 rounded-2xl bg-app-bg px-4 py-2.5 text-sm text-app-muted">
         {kit.handle ? `Built from @${kit.handle}'s profile${photos.length ? ` and ${photos.length} of your photos` : ""}.` : photos.length ? `Built from your answers and ${photos.length} photos.` : "Built from your answers. Add photos any time for richer designs."}
       </p>
     </div>

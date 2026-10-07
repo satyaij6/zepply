@@ -11,7 +11,7 @@ import { StepConnect } from "./StepConnect";
 import { StepContent } from "./StepContent";
 import { StepDone } from "./StepDone";
 import { StepPath } from "./StepPath";
-import { Header, api } from "./ui";
+import { FitFrame, Header, api } from "./ui";
 
 type DraftJson = Omit<Draft, "createdAt" | "updatedAt"> & { createdAt: string; updatedAt: string };
 
@@ -75,9 +75,11 @@ export function Wizard({ initial, connectError }: { initial: OnboardingState; co
   const path = (state.path as Path | null) ?? null;
 
   return (
-    <div className="min-h-dvh pb-20">
-      <Header step={step} onSkip={finish} skipping={busy && step !== 6} />
-      <main className="px-4 pt-12 sm:px-8 lg:pt-16">
+    // Desktop: exactly one screen tall, each step fitted inside (FitFrame). Phones scroll normally.
+    <div className="flex min-h-dvh flex-col lg:h-dvh">
+      <Header onSkip={finish} skipping={busy && step !== 6} />
+      <FitFrame key={step}>
+      <main className="px-4 pb-6 pt-6 sm:px-8 lg:pt-7">
         {step === 1 && (
           <StepPath
             path={path}
@@ -131,6 +133,7 @@ export function Wizard({ initial, connectError }: { initial: OnboardingState; co
         )}
         {step === 6 && <StepDoneLoader drafts={drafts} setDrafts={setDrafts} instagram={state.instagram?.username ?? null} onBack={() => go(5)} onFinish={finish} busy={busy} error={error} />}
       </main>
+      </FitFrame>
     </div>
   );
 }
