@@ -15,6 +15,18 @@ default) picks which queues a machine works, so a machine without the clipper's 
 web app ──► ClipJob (QUEUED) ──► worker claims it ──► clipper ──► clips in storage + Clip rows ──► DONE
 ```
 
+### What each clip comes with
+
+- **Cover image** (`clip_NN_cover.jpg`): the best still of the speaker, rendered through the clip's own
+  framing without captions, with the hook text on it. See `clipper/cover.py`.
+- **Post kit**: 5 title ideas, a caption and hashtags per clip, plus titles, a description and chapters
+  for the full video. One Claude call per job, before rendering; if it fails the clips still ship
+  without copy. See `clipper/postkit.py`.
+- **Zoom punch-ins** on the loudest words (job option `effects`, `--no-effects` to turn off). See
+  `clipper/emphasis.py`.
+- **Screen recordings** (job option `layout`: `auto`, `screen` or `single`): the screen on top and the
+  webcam below. `auto` picks it only for a small, still face in a corner. See `clipper/reframe/screen.py`.
+
 ## Run it on your machine
 
 1. Set up the clipper first (see `../SETUP.md`): Python 3.11+, ffmpeg with libass, and the keys.

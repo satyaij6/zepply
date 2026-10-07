@@ -17,7 +17,7 @@ from .active import (
     Assignment, Identity, assign_speakers, build_tracks, cluster_identities,
     is_single_face, turns_from_transcript,
 )
-from . import panes
+from . import panes, screen
 from .detect import Detections, ReframeError, detect
 from .path import FramePlan, build_plan
 
@@ -37,6 +37,8 @@ class ReframeContext:
     # Divider of a side-by-side source, in SOURCE pixels, or None for a normal
     # single-camera frame. Detected once: it cannot move within a source.
     divider: tuple[float, float] | None = None
+    # Set when the source is a screen recording; overrides speaker framing.
+    screen: screen.ScreenLayout | None = None
 
     @property
     def usable(self) -> bool:
@@ -65,18 +67,33 @@ def prepare(
     as "centre crop, carry on" -- never as an error. Screen recordings, b-roll
     and drone shots have to keep working.
     """
-    if not settings.reframe:
+    forced = settings.layout == "screen"
+    if not settings.reframe and not forced:
         log.info("reframe: disabled; using centre crop")
         return None
-    if not proxy_path.exists():
-        log.warning("reframe: no analysis proxy at %s; using centre crop",
-                    proxy_path)
-        return None
 
-    try:
-        det = detect(proxy_path, paths.faces, settings, use_cache=use_cache)
-    except ReframeError as exc:
-        log.warning("reframe: detection unavailable (%s); using centre crop", exc)
+    det = None
+    if proxy_path.exists():
+        try:
+            det = detect(proxy_path, paths.faces, settings, use_cache=use_cache)
+        except ReframeError as exc:
+            log.warning("reframe: detection unavailable (%s)", exc)
+    else:
+        log.warning("reframe: no analysis proxy at %s", proxy_path)
+
+    # Checked before the face threshold: a webcam overlay can sit either side
+    # of it, and on either side the speaker path frames it wrong.
+    scale = source_w / det.width if det is not None and det.width else 1.0
+    if forced or (det is not None and settings.layout == "auto"):
+        layout = screen.detect_layout(det, settings, scale=scale, forced=forced)
+        if layout is not None:
+            return ReframeContext(
+                detections=det or Detections(0, 0, 0.0, 0.0, []), identities=[],
+                assignments={}, turns=[], proxy_path=proxy_path,
+                proxy_scale=scale, single_face=False, screen=layout,
+            )
+    if det is None:
+        log.warning("reframe: using centre crop")
         return None
 
     if det.detection_ratio < settings.reframe_min_detection_ratio:
@@ -115,8 +132,6 @@ def prepare(
                  int(100 * det.detection_ratio))
     else:
         assignments = assign_speakers(identities, turns, settings)
-
-    scale = source_w / det.width if det.width else 1.0
 
     # Only frames showing two faces can show a composite join, and those are
     # exactly the frames a split layout would be built from. Sampling several
@@ -164,6 +179,10 @@ def path_for_span(
     Detection ran on the proxy, so every coordinate is scaled up here. Doing it
     at the boundary keeps the rest of the reframe code in one coordinate space.
     """
+    if ctx.screen is not None:
+        return screen.plan_for_span(ctx.screen, duration=duration, fps=fps,
+                                    source_w=source_w, source_h=source_h,
+                                    settings=settings)
     scaled = _scaled_identities(ctx)
     return build_plan(
         scaled, ctx.assignments, ctx.turns,

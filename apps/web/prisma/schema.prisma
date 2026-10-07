@@ -131,6 +131,12 @@ model ClipJob {
   clipCount     Int            @default(5)
   style         String         @default("clean")
   captionPos    String         @default("bottom")
+  /// Framing: auto (speaker tracking; screen recordings detected), screen (screen + webcam), single
+  layout        String         @default("auto")
+  /// Zoom punch-ins on emphasised words
+  effects       Boolean        @default(true)
+  /// Post copy for the long video itself: { titles, description, chapters: [{ start, title }] }
+  sourceKit     Json?
   status        ClipJobStatus  @default(QUEUED)
   /// Engine stage in progress: preparing, transcribing, finding_moments, rendering, uploading
   stage         String?
@@ -170,6 +176,12 @@ model Clip {
   videoPath       String
   captionsPath    String?
   thumbPath       String?
+  /// Cover image (best still + hook text), in "clip-renders"
+  coverPath       String?
+  /// Post copy: title options, caption and hashtags (without '#')
+  titles          String[] @default([])
+  caption         String?
+  hashtags        String[] @default([])
   rejected        Boolean  @default(false)
   rejectReason    String?
   createdAt       DateTime @default(now())

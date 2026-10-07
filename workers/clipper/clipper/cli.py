@@ -17,7 +17,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from . import scenes, store
+from . import postkit, scenes, store
 from .assemble import assemble, finalize, plans_payload
 from .boundary import resolve_plans
 from .config import PROFILES, load_settings, paths_for
@@ -67,6 +67,8 @@ def cmd_run(args: argparse.Namespace) -> int:
         style_preset=args.style_preset,
         reframe=(False if args.no_reframe else None),
         layout=args.layout, render_workers=args.render_workers,
+        punch_ins=(False if args.no_effects else None),
+        postkit=(False if args.no_postkit else None), niche=args.niche,
     )
     name = args.name or (name_for_url(args.source) if "://" in args.source
                          else slugify(Path(args.source).stem))
@@ -185,10 +187,14 @@ def cmd_run(args: argparse.Namespace) -> int:
     if should("cut"):
         from .config import CACHE_DIR
 
+        # Titles, caption, hashtags and cover text. Before the render, because
+        # the cover carries the cover text; never fatal (see postkit.py).
+        kit = postkit.ensure(accepted[:settings.top_n], words, paths, settings,
+                             duration=getattr(meta, "duration", None))
         rendered = cut_plans(accepted, words, Path(meta.media_path), paths, settings,
                              top_n=settings.top_n, burn_captions=not args.no_captions,
                              asr_cache=CACHE_DIR / f"{meta.audio_sha256}.json",
-                             debug_reframe=args.debug_reframe)
+                             debug_reframe=args.debug_reframe, kit=kit)
         # cut_plans keeps going past a failed clip so one bad render cannot
         # lose the others -- but the run must not then report success. Measured:
         # all three renders died of "Cannot allocate memory" and the run still
@@ -307,8 +313,14 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--no-captions", action="store_true", help="skip burn-in")
     run.add_argument("--no-reframe", action="store_true",
                      help="centre crop instead of speaker tracking")
-    run.add_argument("--layout", choices=["auto", "single", "split"],
-                     help="auto splits the screen when both people are visible")
+    run.add_argument("--layout", choices=["auto", "single", "split", "screen"],
+                     help="auto splits the screen when both people are visible; "
+                          "screen = screen recording on top, webcam below")
+    run.add_argument("--no-effects", action="store_true",
+                     help="no zoom punch-ins on emphasised words")
+    run.add_argument("--no-postkit", action="store_true",
+                     help="skip titles, caption, hashtags and chapters")
+    run.add_argument("--niche", help="the creator's niche, for the post copy")
     run.add_argument("--debug-reframe", action="store_true",
                      help="also write proxy overlays showing the crop window")
     run.add_argument("--no-cache", action="store_true", help="ignore the ASR cache")

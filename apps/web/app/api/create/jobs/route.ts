@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import prisma from "@/lib/prisma";
 import { requireCreator } from "@/lib/clip-access";
-import { CAPTION_POSITIONS, CLIP_COUNT, CLIP_LANGUAGES, CLIP_STYLES, MAX_ACTIVE_JOBS, isYouTubeUrl } from "@/lib/clip-engine";
+import { CAPTION_POSITIONS, CLIP_COUNT, CLIP_LANGUAGES, CLIP_LAYOUTS, CLIP_STYLES, MAX_ACTIVE_JOBS, isYouTubeUrl } from "@/lib/clip-engine";
 import { sourceExists } from "@/lib/clip-storage";
 
 const values = <T extends { value: string }>(list: readonly T[]) => list.map((o) => o.value) as [T["value"], ...T["value"][]];
@@ -21,6 +21,8 @@ const body = z.object({
   clipCount: z.number().int().min(CLIP_COUNT.min).max(CLIP_COUNT.max),
   style: z.enum(values(CLIP_STYLES)),
   captionPos: z.enum(CAPTION_POSITIONS),
+  layout: z.enum(values(CLIP_LAYOUTS)).default("auto"),
+  effects: z.boolean().default(true),
 });
 
 // GET — The user's clip jobs, newest first

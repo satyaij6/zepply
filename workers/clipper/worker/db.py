@@ -12,6 +12,7 @@ from dataclasses import dataclass
 
 import psycopg
 from psycopg.rows import dict_row
+from psycopg.types.json import Jsonb
 
 # A RUNNING job whose worker hasn't checked in for this long is assumed dead.
 STALE_AFTER = "10 minutes"
@@ -30,6 +31,9 @@ class Job:
     style: str
     caption_pos: str
     attempts: int
+    layout: str = "auto"
+    effects: bool = True
+    niche: str | None = None
 
 
 def connect(url: str) -> psycopg.Connection:
@@ -49,7 +53,8 @@ def claim(conn: psycopg.Connection, worker_id: str) -> Job | None:
                       FOR UPDATE SKIP LOCKED
                       LIMIT 1)
      RETURNING id, "userId", "sourceKind"::text AS kind, "sourcePath", "sourceUrl",
-               language, "clipCount", style, "captionPos", attempts
+               language, "clipCount", style, "captionPos", attempts, layout, effects,
+               (SELECT niche FROM "User" u WHERE u.id = "ClipJob"."userId") AS niche
         """,
         {"worker": worker_id},
     ).fetchone()
@@ -59,6 +64,7 @@ def claim(conn: psycopg.Connection, worker_id: str) -> Job | None:
         id=row["id"], user_id=row["userId"], source_kind=row["kind"], source_path=row["sourcePath"],
         source_url=row["sourceUrl"], language=row["language"], clip_count=row["clipCount"],
         style=row["style"], caption_pos=row["captionPos"], attempts=row["attempts"],
+        layout=row["layout"], effects=row["effects"], niche=row["niche"],
     )
 
 
@@ -74,17 +80,20 @@ def report(conn: psycopg.Connection, job_id: str, stage: str, progress: int) -> 
     return cur.rowcount == 1
 
 
-def finish(conn: psycopg.Connection, job_id: str, clips: list[dict], source_seconds: int | None) -> None:
+def finish(conn: psycopg.Connection, job_id: str, clips: list[dict], source_seconds: int | None,
+           source_kit: dict | None = None) -> None:
     with conn.transaction():
         for clip in clips:
             conn.execute(
                 """
                 INSERT INTO "Clip" (id, "jobId", rank, title, theme, reason, format, "hookScore",
                                     "standaloneScore", "coherenceScore", "finalScore", "durationSec",
-                                    "videoPath", "captionsPath", "thumbPath")
+                                    "videoPath", "captionsPath", "thumbPath", "coverPath",
+                                    titles, caption, hashtags)
                 VALUES (%(id)s, %(job)s, %(rank)s, %(title)s, %(theme)s, %(reason)s, %(format)s, %(hook)s,
                         %(standalone)s, %(coherence)s, %(final)s, %(duration)s,
-                        %(video)s, %(captions)s, %(thumb)s)
+                        %(video)s, %(captions)s, %(thumb)s, %(cover)s,
+                        %(titles)s, %(caption)s, %(hashtags)s)
                 """,
                 {"id": uuid.uuid4().hex, "job": job_id, **clip},
             )
@@ -92,10 +101,11 @@ def finish(conn: psycopg.Connection, job_id: str, clips: list[dict], source_seco
             """
             UPDATE "ClipJob"
                SET status = 'DONE'::"ClipJobStatus", stage = NULL, progress = 100, error = NULL,
-                   "sourceSeconds" = %s, "finishedAt" = now(), "heartbeatAt" = now(), "updatedAt" = now()
+                   "sourceSeconds" = %s, "sourceKit" = %s,
+                   "finishedAt" = now(), "heartbeatAt" = now(), "updatedAt" = now()
              WHERE id = %s
             """,
-            (source_seconds, job_id),
+            (source_seconds, Jsonb(source_kit) if source_kit else None, job_id),
         )
 
 

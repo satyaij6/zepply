@@ -31,6 +31,7 @@ import logging
 
 from ..config import Settings
 from .path import FramePlan, Run
+from .screen import screen_chains
 
 log = logging.getLogger(__name__)
 
@@ -109,7 +110,11 @@ def build_span_graph(
     for n, run in enumerate(plan.runs):
         idx = first_input + n
         tag = f"{label}r{n}"
-        if run.kind == "split" and len(run.panels) == 2:
+        if run.kind == "screen":
+            parts.append(f"[{idx}:v]setpts=PTS-STARTPTS[{tag}in]")
+            chains, out = screen_chains(run, settings, f"{tag}in")
+            parts.extend(chains)
+        elif run.kind == "split" and len(run.panels) == 2:
             parts.append(f"[{idx}:v]setpts=PTS-STARTPTS[{tag}in]")
             chains, out = split_chains(run, settings, f"{tag}in")
             parts.extend(chains)

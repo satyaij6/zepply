@@ -26,7 +26,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
-from . import assembler_render, ffmpeg, reframe
+from . import assembler_render, cover, emphasis, ffmpeg, reframe
 from .assemble import join_windows
 from .captions import (
     Cue, assert_no_cue_straddles_a_join, build_assembled_cues, build_cues,
@@ -157,6 +157,7 @@ def render_plan(
     settings: Settings, *, burn_captions: bool = True, reframe_ctx=None,
     source_size: tuple[int, int] | None = None, debug_reframe: bool = False,
     fps: int = RENDER_FPS, frame_plans: list | None = None,
+    punches: list | None = None, cover_text: str | None = None,
 ) -> tuple[Path, Path]:
     out_dir = paths.root
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -196,18 +197,19 @@ def render_plan(
         f", {len(cards)} label(s)" if cards else "",
     )
 
+    zoom = emphasis.zoom_chain(punches or [], settings, fps)
     if single:
         _render_single(plan, video, ass, media_path, settings,
                        burn_captions=burn_captions, out_dir=out_dir,
                        reframe_ctx=reframe_ctx, index=index,
                        source_size=source_size, paths=paths, fps=fps,
-                       frame_plans=frame_plans)
+                       frame_plans=frame_plans, zoom=zoom)
     else:
         _render_assembled(plan, video, ass, media_path, settings,
                           burn_captions=burn_captions, out_dir=out_dir,
                           reframe_ctx=reframe_ctx, index=index,
                           source_size=source_size, paths=paths, fps=fps,
-                          frame_plans=frame_plans)
+                          frame_plans=frame_plans, zoom=zoom)
 
     if debug_reframe and reframe_ctx is not None:
         _render_debug_overlays(plan, index, reframe_ctx, paths, settings)
@@ -217,6 +219,16 @@ def render_plan(
             f"clip_{index:02d} produced no usable video",
             hint="Check the source still exists and every span is inside it.",
         )
+
+    if settings.covers:
+        _stage_font(out_dir, ASSETS_DIR / cover.FONT)
+        _stage_font(out_dir, ASSETS_DIR / cover.FALLBACK_FONT)
+        if frame_plans is None:
+            frame_plans = plan_framings(plan, reframe_ctx, settings,
+                                        source_size=source_size, fps=fps)
+        cover.render(plan, index, media_path, out_dir, settings,
+                     frame_plans=frame_plans, ctx=reframe_ctx, fps=fps,
+                     text=cover_text or plan.suggested_title)
     return video, srt
 
 
@@ -256,7 +268,7 @@ def _render_single(
     plan: ClipPlan, video: Path, ass: Path, media_path: Path, settings: Settings,
     *, burn_captions: bool, out_dir: Path, reframe_ctx=None, index: int = 1,
     source_size: tuple[int, int] | None = None, paths: Paths | None = None,
-    fps: int = RENDER_FPS, frame_plans: list | None = None,
+    fps: int = RENDER_FPS, frame_plans: list | None = None, zoom: str = "",
 ) -> None:
     """
     Single-span path.
@@ -277,7 +289,7 @@ def _render_single(
     if fp is None:
         crop = reframe.centre_crop_chain(settings)
         pad = reframe.pad_to_canvas(settings)
-        chain = f"{crop},{pad}" if pad else crop
+        chain = ",".join(part for part in (crop, zoom, pad) if part)
         vf = (f"{chain},ass={ass.name}:fontsdir=fonts:shaping=complex"
               if burn_captions else chain)
         ffmpeg.run(
@@ -297,6 +309,9 @@ def _render_single(
         f"[{used}:a]aformat=sample_fmts=fltp:sample_rates=48000"
         f":channel_layouts=stereo,asetpts=PTS-STARTPTS[aout]"
     )
+    if zoom:
+        parts.append(f"[{vlabel}]{zoom}[vzoom]")
+        vlabel = "vzoom"
     pad = reframe.pad_to_canvas(settings)
     if pad:
         parts.append(f"[{vlabel}]{pad}[vpad]")
@@ -321,7 +336,7 @@ def _render_assembled(
     plan: ClipPlan, video: Path, ass: Path, media_path: Path, settings: Settings,
     *, burn_captions: bool, out_dir: Path, reframe_ctx=None, index: int = 1,
     source_size: tuple[int, int] | None = None, paths: Paths | None = None,
-    fps: int = RENDER_FPS, frame_plans: list | None = None,
+    fps: int = RENDER_FPS, frame_plans: list | None = None, zoom: str = "",
 ) -> None:
     if frame_plans is None:
         frame_plans = plan_framings(plan, reframe_ctx, settings,
@@ -332,7 +347,7 @@ def _render_assembled(
     args = assembler_render.build_command(
         plan, str(media_path), video.name, settings,
         ass_name=ass.name if burn_captions else None, fps=fps,
-        frame_plans=frame_plans,
+        frame_plans=frame_plans, zoom=zoom,
     )
     ffmpeg.run(args, cwd=out_dir,
                what=f"{video.stem} render ({len(plan.spans)} spans)")
@@ -387,6 +402,7 @@ def cut_plans(
     plans: list[ClipPlan], words: list[Word], media_path: Path, paths: Paths,
     settings: Settings, *, top_n: int | None = None, burn_captions: bool = True,
     asr_cache: Path | None = None, debug_reframe: bool = False,
+    kit: dict | None = None,
 ) -> list[dict]:
     ffmpeg.ensure_caption_stack(
         ASSETS_DIR / settings.layout_style.captions['font'])
@@ -413,11 +429,17 @@ def cut_plans(
 
     selected = plans[: top_n if top_n is not None else settings.top_n]
 
+    clip_kits = (kit or {}).get("clips", {})
+
     def _entry(n: int, plan: ClipPlan, video: Path, srt: Path) -> dict:
         entry = plan.to_dict()
         entry["index"] = n
         entry["video_path"] = str(video)
         entry["srt_path"] = str(srt)
+        cover_path = paths.root / f"clip_{n:02d}_cover.jpg"
+        entry["cover_path"] = str(cover_path) if cover_path.exists() else None
+        entry["punches"] = [p.to_dict() for p in punches.get(n, [])]
+        entry.update(clip_kits.get(str(n), {}))
         entry["final_score"] = round(
             plan.final(settings.w_hook, settings.w_standalone, settings.w_coherence), 4
         )
@@ -431,10 +453,17 @@ def cut_plans(
     # minutes and no ffmpeg started until a thread finished. Serial here, so the
     # first encode begins as soon as the first plan is ready.
     framings: dict[int, list] = {}
+    punches: dict[int, list] = {}
     started = time.monotonic()
     for n, plan in enumerate(selected, 1):
         framings[n] = plan_framings(plan, ctx, settings,
                                     source_size=source_size, fps=fps)
+        try:
+            punches[n] = emphasis.choose(plan, words, paths.audio, settings,
+                                         frame_plans=framings[n])
+        except Exception as exc:  # noqa: BLE001 - an effect must never cost the clip
+            log.warning("cut: clip_%02d punch-ins skipped: %s", n, exc)
+            punches[n] = []
         log.debug("cut: clip_%02d framing planned (%.1fs elapsed)",
                   n, time.monotonic() - started)
     if ctx is not None:
@@ -446,7 +475,8 @@ def cut_plans(
                            burn_captions=burn_captions, reframe_ctx=ctx,
                            source_size=source_size,
                            debug_reframe=debug_reframe, fps=fps,
-                           frame_plans=framings[n])
+                           frame_plans=framings[n], punches=punches[n],
+                           cover_text=clip_kits.get(str(n), {}).get("cover_text"))
 
     # What remains per clip IS an independent ffmpeg process, so threads are
     # enough here: the GIL is released while the subprocess encodes. `ctx` is
@@ -477,12 +507,13 @@ def cut_plans(
     # as_completed yields in finish order; clips.json stays in rank order.
     rendered = [done[n] for n in sorted(done)]
 
-    write_clips_json(rendered, paths, settings)
+    write_clips_json(rendered, paths, settings, kit=kit)
     log.info("cut: rendered %d/%d clips -> %s", len(rendered), len(selected), paths.root)
     return rendered
 
 
-def write_clips_json(clips: list[dict], paths: Paths, settings: Settings) -> Path:
+def write_clips_json(clips: list[dict], paths: Paths, settings: Settings,
+                     *, kit: dict | None = None) -> Path:
     payload = {
         "video": paths.name,
         "weights": {
@@ -493,6 +524,7 @@ def write_clips_json(clips: list[dict], paths: Paths, settings: Settings) -> Pat
         "profile": settings.profile,
         "score_model": settings.score_model,
         "clips": clips,
+        "source_kit": (kit or {}).get("source"),
     }
     paths.clips_json.write_text(
         json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8"
