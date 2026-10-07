@@ -9,12 +9,12 @@ import { FONTS, MAX_COLORS, MAX_TAGS } from "@/lib/onboarding/options";
 import { paletteFromImages } from "./palette";
 import { Eyebrow, Lede, Nav, TagEditor, Title, api } from "./ui";
 
-/** CSS for each headline face (loaded by app/start/layout.tsx) */
+/** CSS for each headline face (app/start/layout.tsx loads them) */
 export const FONT_CSS: Record<string, string> = {
-  "inter-tight": "var(--font-brand-inter-tight)",
-  "plus-jakarta": "var(--font-brand-jakarta)",
-  poppins: "var(--font-brand-poppins)",
-  playfair: "var(--font-brand-playfair)",
+  "inter-tight": "var(--font-landing-display)",
+  "plus-jakarta": "'Plus Jakarta Sans', sans-serif",
+  poppins: "Poppins, sans-serif",
+  playfair: "'Playfair Display', serif",
   "instrument-serif": "var(--font-landing-serif)",
 };
 
