@@ -200,7 +200,8 @@ def render_plan(
     zoom = emphasis.zoom_chain(punches or [], settings, fps)
     # With B-roll or kinetic words the captions go on last, over the
     # graphics, in one browser render; see broll.py and kinetic.py.
-    overlay = settings.broll or layout.kinetic_on
+    overlay = (settings.broll or layout.kinetic_on or settings.card_layout
+               or bool(settings.cta_keyword))
     final_captions = burn_captions
     burn_captions = burn_captions and not overlay
     if single:

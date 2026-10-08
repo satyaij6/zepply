@@ -1,0 +1,38 @@
+description = "Big word: a small line, then the key word large in the accent"
+
+# docs/style_guide_creator_kinetic.md. The words are drawn by the browser over
+# the clip (clipper/kinetic.py), placed beside the speaker's head. [captions]
+# below is the fallback: if that render fails, these are burned instead, so
+# the clip never goes out without words.
+
+[canvas]
+bg = "#000000"
+
+[video]
+mode = "full"           # the layout needs the whole frame around the head
+
+[headline]
+enabled = false
+
+[captions]
+font = "NotoSansTelugu-Regular.ttf"
+script = "roman"
+size_pct = 0.0333
+fill = "#FFFFFF"
+outline = "#000000"
+outline_px = 4
+box = false
+anchor = "canvas"
+pos = "bottom"
+inset_pct = 0.12
+max_width = 0.86
+bold = true
+shadow_px = 2
+fade_in_ms = 180
+fade_out_ms = 60
+
+[kinetic]
+enabled = true
+mode = "emphasis"
+accent = "#3888F0"      # measured from the reference; the Brand Kit accent replaces it
+script = "roman"

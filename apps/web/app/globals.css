@@ -124,3 +124,20 @@ body {
   0% { opacity: 0; }
   100% { opacity: 1; }
 }
+
+/* Style-picker previews (components/create/clips/StylePreviews.tsx): short loops, paused for
+   people who asked for less motion. */
+@keyframes zp-pop { 0%, 78% { opacity: 1; transform: translate(-50%, 0) scale(1); } 86% { opacity: 0; transform: translate(-50%, 6px) scale(.96); } 92% { opacity: 0; transform: translate(-50%, 6px) scale(.96); } 100% { opacity: 1; transform: translate(-50%, 0) scale(1); } }
+@keyframes zp-pop-side { 0%, 78% { opacity: 1; transform: scale(1); } 86%, 92% { opacity: 0; transform: scale(.96); } 100% { opacity: 1; transform: scale(1); } }
+@keyframes zp-lift { 0%, 70% { transform: translateY(0); opacity: 1; } 85% { transform: translateY(8px); opacity: .5; } 100% { transform: translateY(0); opacity: 1; } }
+@keyframes zp-grow { 0%, 75% { transform: scaleX(1); } 85% { transform: scaleX(.05); } 100% { transform: scaleX(1); } }
+@keyframes zp-slide { from { transform: translateX(0); } to { transform: translateX(28%); } }
+.zp-pop { animation: zp-pop 3.2s ease-out infinite; }
+.zp-pop-2 { animation: zp-pop-side 3.2s ease-out infinite; }
+.zp-pop-3 { animation: zp-pop-side 3.2s ease-out .25s infinite; }
+.zp-lift { animation: zp-lift 3.2s cubic-bezier(.2,.8,.2,1) infinite; }
+.zp-grow { transform-origin: 0 50%; animation: zp-grow 3.2s cubic-bezier(.2,.8,.2,1) infinite; }
+.zp-slide { animation: zp-slide 3.2s linear infinite alternate; }
+@media (prefers-reduced-motion: reduce) {
+  .zp-pop, .zp-pop-2, .zp-pop-3, .zp-lift, .zp-grow, .zp-slide { animation: none; }
+}

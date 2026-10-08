@@ -284,6 +284,15 @@ class Settings:
     broll_render_timeout: int = 1800   # seconds
     broll_keep_work: bool = False      # keep the HyperFrames project for review
     hyperframes_version: str = "0.8.140"
+    # Which look the B-roll designer works in: editorial (dark, Hairline line
+    # art), explainer (light, data), signal (dark grid, process). See
+    # prompts/looks/ and docs/style_guide*.md.
+    broll_look: str = "editorial"
+
+    # ---- "Comment for link" reel (clipper/reel.py) ---------------------
+    card_layout: bool = False          # speaker in a card on a brand canvas
+    cta_keyword: str | None = None     # the "Comment WORD" end card
+    canvas: str | None = None          # canvas colour; default: from the accent
 
     # ---- punch-ins ----------------------------------------------------
     # Hard zoom on emphasised words; see emphasis.py for how they are chosen.

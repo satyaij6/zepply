@@ -36,6 +36,13 @@ class Job:
     niche: str | None = None
     broll: bool = False
     accent: str | None = None
+    broll_look: str = "editorial"
+    card_layout: bool = False
+    cta_keyword: str | None = None
+    # A restyle: re-render one clip of a finished job from its saved analysis
+    parent_job_id: str | None = None
+    only_rank: int | None = None
+    parent_bundle: str | None = None
 
 
 def connect(url: str) -> psycopg.Connection:
@@ -56,6 +63,8 @@ def claim(conn: psycopg.Connection, worker_id: str) -> Job | None:
                       LIMIT 1)
      RETURNING id, "userId", "sourceKind"::text AS kind, "sourcePath", "sourceUrl",
                language, "clipCount", style, "captionPos", attempts, layout, effects, broll,
+               "brollLook", "cardLayout", "ctaKeyword", "parentJobId", "onlyRank",
+               (SELECT p."bundlePath" FROM "ClipJob" p WHERE p.id = "ClipJob"."parentJobId") AS parent_bundle,
                (SELECT niche FROM "User" u WHERE u.id = "ClipJob"."userId") AS niche,
                (SELECT accent FROM "BrandKit" b WHERE b."userId" = "ClipJob"."userId") AS accent
         """,
@@ -68,7 +77,9 @@ def claim(conn: psycopg.Connection, worker_id: str) -> Job | None:
         source_url=row["sourceUrl"], language=row["language"], clip_count=row["clipCount"],
         style=row["style"], caption_pos=row["captionPos"], attempts=row["attempts"],
         layout=row["layout"], effects=row["effects"], niche=row["niche"],
-        broll=row["broll"], accent=row["accent"],
+        broll=row["broll"], accent=row["accent"], broll_look=row["brollLook"],
+        card_layout=row["cardLayout"], cta_keyword=row["ctaKeyword"],
+        parent_job_id=row["parentJobId"], only_rank=row["onlyRank"], parent_bundle=row["parent_bundle"],
     )
 
 
@@ -85,19 +96,28 @@ def report(conn: psycopg.Connection, job_id: str, stage: str, progress: int) -> 
 
 
 def finish(conn: psycopg.Connection, job_id: str, clips: list[dict], source_seconds: int | None,
-           source_kit: dict | None = None) -> None:
+           source_kit: dict | None = None, *, bundle_path: str | None = None,
+           parent_job_id: str | None = None) -> None:
     with conn.transaction():
         for clip in clips:
+            clip.setdefault("variant_of", None)
+            if parent_job_id:
+                # A restyle is a new take of the original clip with the same rank.
+                row = conn.execute(
+                    """SELECT id FROM "Clip" WHERE "jobId" = %s AND rank = %s AND "variantOf" IS NULL LIMIT 1""",
+                    (parent_job_id, clip["rank"]),
+                ).fetchone()
+                clip["variant_of"] = row["id"] if row else None
             conn.execute(
                 """
                 INSERT INTO "Clip" (id, "jobId", rank, title, theme, reason, format, "hookScore",
                                     "standaloneScore", "coherenceScore", "finalScore", "durationSec",
                                     "videoPath", "captionsPath", "thumbPath", "coverPath",
-                                    titles, caption, hashtags)
+                                    titles, caption, hashtags, "variantOf")
                 VALUES (%(id)s, %(job)s, %(rank)s, %(title)s, %(theme)s, %(reason)s, %(format)s, %(hook)s,
                         %(standalone)s, %(coherence)s, %(final)s, %(duration)s,
                         %(video)s, %(captions)s, %(thumb)s, %(cover)s,
-                        %(titles)s, %(caption)s, %(hashtags)s)
+                        %(titles)s, %(caption)s, %(hashtags)s, %(variant_of)s)
                 """,
                 {"id": uuid.uuid4().hex, "job": job_id, **clip},
             )
@@ -105,11 +125,11 @@ def finish(conn: psycopg.Connection, job_id: str, clips: list[dict], source_seco
             """
             UPDATE "ClipJob"
                SET status = 'DONE'::"ClipJobStatus", stage = NULL, progress = 100, error = NULL,
-                   "sourceSeconds" = %s, "sourceKit" = %s,
+                   "sourceSeconds" = %s, "sourceKit" = %s, "bundlePath" = COALESCE(%s, "bundlePath"),
                    "finishedAt" = now(), "heartbeatAt" = now(), "updatedAt" = now()
              WHERE id = %s
             """,
-            (source_seconds, Jsonb(source_kit) if source_kit else None, job_id),
+            (source_seconds, Jsonb(source_kit) if source_kit else None, bundle_path, job_id),
         )
 
 

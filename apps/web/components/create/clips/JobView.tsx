@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { AlertCircle, ArrowLeft, Download, ImageIcon, Loader2, RotateCcw, ThumbsDown, X } from "lucide-react";
+import { AlertCircle, ArrowLeft, Check, Download, ImageIcon, Loader2, MessageCircle, RotateCcw, ThumbsDown, Wand2, X } from "lucide-react";
 import { isDemo } from "@/components/layout/DashboardLayout";
 import { clock } from "@/lib/clip-engine";
+import { EDIT_TEMPLATES, templateOf } from "@/lib/clip-templates";
 import { CopyButton } from "./CopyButton";
 import { active, stageText, type ClipRow, type JobDetail } from "./types";
 
@@ -39,7 +40,7 @@ export function JobView({ id }: { id: string }) {
     let timer: ReturnType<typeof setTimeout>;
     const tick = async () => {
       const data = await load();
-      if (alive && (!data || active(data.status))) timer = setTimeout(tick, 4000);
+      if (alive && (!data || active(data.status) || data.restyling?.length)) timer = setTimeout(tick, 4000);
     };
     tick();
     return () => {
@@ -47,6 +48,15 @@ export function JobView({ id }: { id: string }) {
       clearTimeout(timer);
     };
   }, [load]);
+
+  /** After starting a restyle: refresh, then keep refreshing until it lands. */
+  async function watch() {
+    const poll = async () => {
+      const d = await load();
+      if (d && (active(d.status) || d.restyling.length)) setTimeout(poll, 4000);
+    };
+    poll();
+  }
 
   async function act(action: "retry" | "cancel") {
     if (demo) return;
@@ -106,13 +116,44 @@ export function JobView({ id }: { id: string }) {
         </div>
       ) : (
         <>
-          <p className="mt-2 text-[15px] text-app-muted">
+          {job.ctaKeyword && (
+            <div className="mt-5 flex max-w-2xl items-start gap-3 rounded-2xl border border-app-line bg-app-card px-4 py-3.5 text-sm">
+              <MessageCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" />
+              <span>
+                These reels end with <b>Comment “{job.ctaKeyword}”</b>.{" "}
+                {job.triggerId ? (
+                  <>
+                    Zepply DMs your link to everyone who comments it.{" "}
+                    <Link href={`/dashboard/triggers/${job.triggerId}`} className="font-semibold underline">
+                      Edit the reply
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    The auto-reply isn&apos;t on yet: connect Instagram and add a link in{" "}
+                    <Link href="/dashboard/triggers/new" className="font-semibold underline">
+                      Automations
+                    </Link>
+                    .
+                  </>
+                )}
+              </span>
+            </div>
+          )}
+          <p className="mt-4 text-[15px] text-app-muted">
             {job.clips.length} clip{job.clips.length === 1 ? "" : "s"}, best first
             {job.sourceSeconds ? ` · from ${clock(job.sourceSeconds)} of video` : ""}. Each comes with a cover and words ready to paste.
           </p>
           <div className="mt-8 space-y-6">
             {job.clips.map((c) => (
-              <ClipCard key={c.id} clip={c} demo={demo} />
+              <ClipCard
+                key={c.id}
+                clip={c}
+                demo={demo}
+                canRestyle={job.canRestyle}
+                restyling={job.restyling.filter((r) => r.rank === c.rank)}
+                onRestyle={watch}
+              />
             ))}
           </div>
           {job.sourceKit && <FullVideoKit kit={job.sourceKit} />}
@@ -158,7 +199,40 @@ function Working({ job, onCancel }: { job: JobDetail; onCancel: () => void }) {
 
 const hashtagLine = (tags: string[]) => tags.map((t) => `#${t}`).join(" ");
 
-function ClipCard({ clip, demo }: { clip: ClipRow; demo: boolean }) {
+function ClipCard({
+  clip,
+  demo,
+  canRestyle,
+  restyling,
+  onRestyle,
+}: {
+  clip: ClipRow;
+  demo: boolean;
+  canRestyle: boolean;
+  restyling: JobDetail["restyling"];
+  onRestyle: () => void;
+}) {
+  const [picking, setPicking] = useState(false);
+  const [choice, setChoice] = useState("kinetic");
+  const [sending, setSending] = useState(false);
+  const [restyleError, setRestyleError] = useState<string | null>(null);
+
+  async function restyle() {
+    if (demo) return setPicking(false);
+    setSending(true);
+    setRestyleError(null);
+    const res = await fetch(`/api/create/clips/${clip.id}/restyle`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ template: choice }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setSending(false);
+    if (!res.ok) return setRestyleError(data.error || "Couldn't start that. Try again.");
+    setPicking(false);
+    onRestyle();
+  }
+
   const [rejecting, setRejecting] = useState(false);
   const [reason, setReason] = useState("");
   const [rejected, setRejected] = useState(clip.rejected);
@@ -252,6 +326,15 @@ function ClipCard({ clip, demo }: { clip: ClipRow; demo: boolean }) {
               Subtitles (.srt)
             </a>
           )}
+          {canRestyle && !picking && (
+            <button
+              type="button"
+              onClick={() => setPicking(true)}
+              className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-app-line bg-white px-3.5 text-sm font-semibold transition hover:border-zinc-300"
+            >
+              <Wand2 className="h-4 w-4" /> Try another style
+            </button>
+          )}
           {!rejected && !rejecting && (
             <button
               type="button"
@@ -263,6 +346,68 @@ function ClipCard({ clip, demo }: { clip: ClipRow; demo: boolean }) {
           )}
           {rejected && <span className="text-sm text-app-muted">Thanks, we&apos;ll learn from this.</span>}
         </div>
+
+        {picking && (
+          <div className="rounded-2xl border border-app-line bg-white p-4">
+            <p className="text-sm font-semibold">Make a new version in</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {EDIT_TEMPLATES.filter((t) => !t.cta).map((t) => (
+                <button
+                  key={t.value}
+                  type="button"
+                  onClick={() => setChoice(t.value)}
+                  className={`inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-sm font-medium transition ${
+                    choice === t.value ? "border-emerald-500 bg-emerald-50" : "border-app-line hover:border-zinc-300"
+                  }`}
+                >
+                  {choice === t.value && <Check className="h-3.5 w-3.5 text-emerald-600" />} {t.label}
+                </button>
+              ))}
+            </div>
+            <p className="mt-2 text-[13px] text-app-muted">{templateOf(choice).about} This clip only; the original stays.</p>
+            {restyleError && <p className="mt-2 text-sm text-red-600">{restyleError}</p>}
+            <div className="mt-3 flex gap-2">
+              <button type="button" onClick={restyle} disabled={sending} className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-app-ink px-3 text-sm font-semibold text-white disabled:opacity-50">
+                {sending && <Loader2 className="h-3.5 w-3.5 animate-spin" />} Make this version
+              </button>
+              <button type="button" onClick={() => setPicking(false)} className="h-9 rounded-lg px-3 text-sm font-semibold text-app-muted">
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        {(restyling.length > 0 || clip.versions.length > 0) && (
+          <section>
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-app-faint">Other versions</p>
+            <div className="mt-2 flex flex-wrap gap-3">
+              {restyling.map((r) => (
+                <div key={r.id} className="flex aspect-[9/16] w-[108px] flex-col items-center justify-center gap-2 rounded-xl bg-app-side p-2 text-center text-white">
+                  <Loader2 className="h-4 w-4 animate-spin text-zinc-400" />
+                  <span className="text-[11px] leading-tight text-zinc-300">{templateOf(r.template).label}</span>
+                  <span className="text-[11px] tabular-nums text-zinc-500">{r.progress}%</span>
+                </div>
+              ))}
+              {clip.versions.map((v) => (
+                <div key={v.id} className="w-[108px]">
+                  <div className="relative aspect-[9/16] overflow-hidden rounded-xl bg-app-side">
+                    {v.videoUrl && (
+                      <video src={v.videoUrl} poster={v.coverUrl ?? undefined} controls playsInline preload="none" className="absolute inset-0 h-full w-full object-cover" />
+                    )}
+                  </div>
+                  <div className="mt-1 flex items-center justify-between gap-1">
+                    <span className="truncate text-[12px] font-medium">{templateOf(v.template).label}</span>
+                    {v.downloadUrl && (
+                      <a href={v.downloadUrl} aria-label="Download this version" className="text-app-muted hover:text-app-ink">
+                        <Download className="h-3.5 w-3.5" />
+                      </a>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         {rejecting && (
           <div className="rounded-2xl border border-app-line bg-white p-4">
@@ -337,7 +482,7 @@ function FullVideoKit({ kit }: { kit: NonNullable<JobDetail["sourceKit"]> }) {
 
 const DEMO_JOB: JobDetail = {
   id: "demo",
-  title: "Episode 12 — RGV unfiltered",
+  title: "Episode 12 — on building in public",
   sourceKind: "UPLOAD",
   sourceUrl: null,
   status: "DONE",
@@ -345,43 +490,48 @@ const DEMO_JOB: JobDetail = {
   progress: 100,
   error: null,
   clipCount: 2,
-  style: "clean",
+  template: "kinetic",
+  style: "kinetic",
   layout: "auto",
   effects: true,
-  broll: true,
-  sourceSeconds: 4191,
+  broll: false,
+  sourceSeconds: 2710,
   createdAt: new Date().toISOString(),
   startedAt: new Date().toISOString(),
   finishedAt: new Date().toISOString(),
+  ctaKeyword: null,
+  triggerId: null,
+  canRestyle: true,
+  restyling: [{ id: "r1", rank: 1, template: "editorial", progress: 64, status: "RUNNING" }],
   sourceKit: {
-    titles: ["RGV Unfiltered: Money, Crime, Nepotism and the Logic of Life", "Inside RGV's Mind: Money, Fear, Failure and Human Nature"],
+    titles: ["Building in Public: What Actually Works", "The First 1,000 Customers, Honestly"],
     description:
-      "In this episode, Ram Gopal Varma sits down for a wide-ranging conversation on cinema, money, crime and the human mind.\n\nHe breaks down why people are drawn to disorder, why star kids get first chances, and why most worry is really unprocessed emotion.",
+      "A candid conversation about launching a small product, finding the first customers, and what to share publicly along the way.\n\nCovers pricing, the first launch, and the habits that kept the work going.",
     chapters: [
-      { start: 0, title: "Money, power and nepotism" },
-      { start: 390, title: "What cinema means to RGV" },
-      { start: 1890, title: "Why crime is the most sellable content" },
-      { start: 3730, title: "Worry versus thinking explained" },
+      { start: 0, title: "Why build in public" },
+      { start: 420, title: "The first launch" },
+      { start: 1310, title: "Pricing that felt wrong" },
+      { start: 2240, title: "What I'd do again" },
     ],
   },
   clips: [1, 2].map((rank) => ({
     id: `demo-${rank}`,
     rank,
-    title: rank === 1 ? "Why Is Crime The Most Sellable Content" : "Why Do Star Kids Get Chances First",
+    title: rank === 1 ? "Nobody Cares About Your Launch Day" : "Why I Doubled My Price",
     theme: null,
-    reason: rank === 1 ? "Opens on a contestable claim and pays it off with a concrete example inside 80 seconds." : "A question the viewer has asked themselves, answered bluntly.",
+    reason: rank === 1 ? "Opens on a contestable claim and pays it off with a concrete story inside a minute." : "A question every founder asks, answered with a real number.",
     format: "single_take",
     finalScore: 8.4,
-    durationSec: rank === 1 ? 80.7 : 43.7,
+    durationSec: rank === 1 ? 58.2 : 43.7,
     titles:
       rank === 1
-        ? ["Why Is Crime The Most Sellable Content", "RGV's Bold Claim About Human Nature", "Why Do We Love Reading About Disasters"]
-        : ["Why Do Star Kids Get Chances First", "RGV's Blunt Take On Nepotism", "Would You Not Give Your Own Son"],
+        ? ["Nobody Cares About Your Launch Day", "What Really Brought The First Users", "Launch Day Is Overrated"]
+        : ["Why I Doubled My Price", "The Pricing Mistake I Almost Kept", "Charge More, Sell More?"],
     caption:
       rank === 1
-        ? "RGV breaks down why crime, chaos and disorder excite us more than order ever will.\nWatch till the end and tell us what you think."
-        : "RGV says nepotism isn't injustice, it's just how every family business works.\nAgree or disagree? Drop a comment.",
-    hashtags: ["rgv", "ramgopalvarma", "telugupodcast", "humannature", "teluguinterviews"],
+        ? "Launch day got 40 signups. The next 400 came from somewhere else.\nSave this for your next launch."
+        : "I was scared to double the price. Here's what happened.\nWould you have done it?",
+    hashtags: ["buildinpublic", "startup", "founderstory", "indiehacker", "smallbusiness"],
     rejected: false,
     videoUrl: null,
     downloadUrl: null,
@@ -389,5 +539,6 @@ const DEMO_JOB: JobDetail = {
     captionsUrl: null,
     coverUrl: null,
     coverDownloadUrl: null,
+    versions: [],
   })),
 };

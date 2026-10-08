@@ -219,6 +219,9 @@ SCHEMA["kinetic"] = {
     "enabled": (_flag, True),
     "accent": (_colour, False),            # the pen; the Brand Kit accent overrides it
     "script": (_one_of("telugu", "roman"), False),
+    # kinetic = words placed around the head; the others are centred caption
+    # lines in the creator styles (see kinetic.build_lines).
+    "mode": (_one_of("kinetic", "karaoke", "pill", "emphasis", "caps"), False),
 }
 
 

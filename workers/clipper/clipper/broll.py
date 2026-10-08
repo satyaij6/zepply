@@ -90,6 +90,13 @@ HAIRLINE_CSS = """
 """
 
 
+# The same figures on the Clean Explainer's light paper.
+HAIRLINE_LIGHT = """
+:root { --hl-plate: #F0F6F6; --hl-edge: #5E6866; --hl-mid: #A9B4B1; --hl-lo: #D3DCDA; }
+"""
+LOOKS = ("editorial", "explainer", "signal")
+
+
 # ------------------------------------------------------------------ schema
 
 class Moment(BaseModel):
@@ -206,10 +213,12 @@ def build_prompt(plan: ClipPlan, timed, duration: float, *, title: str | None,
 
 # ------------------------------------------------------------------ Claude
 
-def system_prompt() -> str:
-    """The design brief, with the worked Hairline moment pasted in."""
-    return PROMPT_PATH.read_text(encoding="utf-8").replace(
+def system_prompt(look: str = "editorial") -> str:
+    """The design brief, with the worked Hairline moment and the clip's look."""
+    brief = PROMPT_PATH.read_text(encoding="utf-8").replace(
         "{{HAIRLINE_EXAMPLE}}", HAIRLINE_EXAMPLE.read_text(encoding="utf-8").strip())
+    look_file = PROMPTS_DIR / "looks" / f"{look if look in LOOKS else 'editorial'}.md"
+    return brief + "\n\n" + look_file.read_text(encoding="utf-8")
 
 
 def _client(settings: Settings):
@@ -225,7 +234,7 @@ def _ask(client, settings: Settings, messages: list) -> tuple[Design | None, lis
     """One design request. Returns the design (None on refusal) and the reply content."""
     import anthropic
 
-    system = system_prompt()
+    system = system_prompt(settings.broll_look)
 
     def once():
         try:
@@ -300,7 +309,8 @@ def _box(layout: str) -> str:
 
 
 def assemble(moments: list[Moment], project: Path, *, duration: float, fps: int,
-             accent: str | None = None, layer=None) -> Path:
+             accent: str | None = None, layer=None, shell: str = "",
+             look: str = "editorial") -> Path:
     """
     One composition: the clip, the B-roll moments, and optionally a kinetic
     caption layer (kinetic.Layer) drawn above everything.
@@ -343,6 +353,8 @@ html, body {{ margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden
 #video-wrap video {{ width: 100%; height: 100%; object-fit: cover; object-position: 50% 38%; }}
 .moment {{ position: absolute; overflow: hidden; pointer-events: none; }}
 {HAIRLINE_CSS}
+{HAIRLINE_LIGHT if look == "explainer" else ""}
+{shell}
 {chr(10).join(styles)}
 {layer.css if layer else ""}
 </style>
@@ -474,23 +486,50 @@ def apply(plan: ClipPlan, index: int, video: Path, ass: Path, words: list[Word],
                                   solo=solo_windows(plan, frame_plans), cache_dir=cache_dir) or []
             except Exception as exc:  # noqa: BLE001 - B-roll must never cost the clip
                 log.warning("broll: clip_%02d goes out without B-roll: %s", index, exc)
+        accent = settings.broll_accent or style.kinetic.get("accent") or "#3888F0"
+        captions_layer = None
         if style.kinetic_on and burn:
-            layer = kinetic.build(
-                plan, words, settings, frame_plans=frame_plans, ctx=ctx, audio=audio,
-                blocked=[(m.start, m.end) for m in moments if m.layout != "overlay"],
-                accent=settings.broll_accent or style.kinetic.get("accent") or "#3888F0",
-                script=style.kinetic.get("script", "roman"), seed=index)
-        if moments or layer:
-            assemble(moments, work, duration=duration, fps=fps,
-                     accent=settings.broll_accent, layer=layer)
+            mode = style.kinetic.get("mode") or "kinetic"
+            if mode == "kinetic" and not settings.card_layout:
+                captions_layer = kinetic.build(
+                    plan, words, settings, frame_plans=frame_plans, ctx=ctx, audio=audio,
+                    blocked=[(m.start, m.end) for m in moments if m.layout != "overlay"],
+                    accent=accent, script=style.kinetic.get("script", "roman"), seed=index)
+            else:
+                # Around-the-head placement means nothing once the speaker is a
+                # card; kinetic falls back to centred emphasis lines there.
+                captions_layer = kinetic.build_lines(
+                    plan, words, settings, mode=mode if mode != "kinetic" else "emphasis",
+                    audio=audio, accent=accent, script=style.kinetic.get("script", "roman"),
+                    anchor_y=kinetic.CARD_ANCHOR if settings.card_layout else None)
+        shell = ""
+        reel_layer = None
+        if settings.card_layout or settings.cta_keyword:
+            from . import reel
+
+            canvas, ink = reel.canvas_from(settings.canvas or accent)
+            sections = (reel.plan_panels(plan, words, settings, fallback=title or plan.suggested_title,
+                                         cache_dir=cache_dir) if settings.card_layout else [])
+            reel_layer = reel.layer(duration, card=settings.card_layout, sections=sections,
+                                    keyword=settings.cta_keyword, accent=accent,
+                                    canvas=canvas, ink=ink)
+            if settings.card_layout:
+                shell = reel.shell_css(canvas)
+            from .reel import merge
+            layer = merge(captions_layer, reel_layer)
+        else:
+            layer = captions_layer
+        if moments or layer or shell:
+            assemble(moments, work, duration=duration, fps=fps, accent=accent,
+                     layer=layer, shell=shell, look=settings.broll_look)
             errors = lint_errors(work, settings)
             if errors:
                 raise ClipperError("overlay composition fails lint: " + "; ".join(errors[:4]))
             log.info("broll: clip_%02d rendering %d moment(s)%s", index, len(moments),
-                     f" and {layer.summary['beats']} kinetic beats" if layer else "")
+                     f" and caption/reel layers {layer.summary}" if layer else "")
             render(work, work / "broll.mp4", settings, fps)
             picture = work / "broll.mp4"
-            captions = burn and layer is None
+            captions = burn and captions_layer is None
     except Exception as exc:  # noqa: BLE001 - the clip ships plain rather than not at all
         log.warning("broll: clip_%02d goes out plain: %s", index, exc)
         moments, layer, picture, captions = [], None, clean, burn
@@ -521,7 +560,7 @@ def _design(plan: ClipPlan, index: int, words: list[Word], settings: Settings,
                           solo=solo)
     # A design is paid for once: re-rendering the same clip (a new style, a
     # fixed bug downstream) reuses it while the prompt and the brief match.
-    key = hashlib.sha256((prompt + system_prompt()
+    key = hashlib.sha256((prompt + system_prompt(settings.broll_look)
                           + settings.broll_model).encode()).hexdigest()[:16]
     cache = cache_dir / f"broll_{key}.json" if cache_dir else None
     if cache is not None and cache.exists():

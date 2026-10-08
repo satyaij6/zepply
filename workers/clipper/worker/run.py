@@ -63,20 +63,35 @@ def process(job: db.Job, cfg: Config, conn, storage: Storage) -> None:
 
     # ---- clipper -----------------------------------------------------
     out_dir = root / "out"
+    if job.parent_job_id:
+        # A restyle reuses the original job's analysis; only one clip is rendered.
+        if not job.parent_bundle or not job.only_rank:
+            raise JobFailed("This video was made before restyling existed. Make it again to try other styles.")
+        bundle_file = storage.download(RENDERS, job.parent_bundle, root / "bundle.tar.gz")
+        head = ["restyle", source, "--bundle", str(bundle_file), "--rank", str(job.only_rank), "--name", "clips"]
+    else:
+        head = ["run", source, "--name", "clips", "--top", str(job.clip_count), "--device", cfg.device]
     cmd = [
-        sys.executable, "-m", "clipper.cli", "--out", str(out_dir),
-        "run", source, "--name", "clips", "--top", str(job.clip_count),
-        "--style", job.style, "--caption-pos", job.caption_pos, "--device", cfg.device,
+        sys.executable, "-m", "clipper.cli", "--out", str(out_dir), *head,
+        "--style", "clean" if job.style == "none" else job.style,
+        "--caption-pos", job.caption_pos,
         "--layout", job.layout if job.layout in ("auto", "screen", "single") else "auto",
     ]
     if not job.effects:
         cmd.append("--no-effects")
     if job.niche:
         cmd += ["--niche", job.niche]
+    if job.style == "none":
+        cmd.append("--no-captions")
     if job.broll:
-        cmd.append("--broll")
-        if job.accent and re.fullmatch(r"#[0-9a-fA-F]{6}", job.accent):
-            cmd += ["--accent", job.accent]
+        cmd += ["--broll", "--look", job.broll_look if job.broll_look in ("editorial", "explainer", "signal") else "editorial"]
+    if job.card_layout:
+        cmd.append("--card")
+    if job.cta_keyword and re.fullmatch(r"[A-Za-z0-9]{2,16}", job.cta_keyword):
+        cmd += ["--cta-keyword", job.cta_keyword]
+    if job.accent and re.fullmatch(r"#[0-9a-fA-F]{6}", job.accent):
+        # The pen, the end card and the brand canvas all start from the Brand Kit accent.
+        cmd += ["--accent", job.accent]
     log.info("job %s: running clipper (%d clips, style %s)", job.id, job.clip_count, job.style)
     clips_dir = out_dir / "clips"
     with open(log_path, "w", encoding="utf-8") as log_file:
@@ -104,8 +119,20 @@ def process(job: db.Job, cfg: Config, conn, storage: Storage) -> None:
     db.report(conn, job.id, "uploading", 96)
     clips = [_upload_clip(entry, job, clips_dir, storage) for entry in manifest["clips"]]
     meta = json.loads((clips_dir / "work" / "meta.json").read_text(encoding="utf-8"))
+    bundle_path = None
+    if not job.parent_job_id:
+        # Saved so any clip of this job can be restyled later without re-analysing.
+        try:
+            from clipper import bundle
+            from clipper.config import paths_for
+
+            archive = bundle.make(paths_for("clips", out_dir), root / "bundle.tar.gz")
+            bundle_path = storage.upload(RENDERS, f"{job.user_id}/{job.id}/bundle.tar.gz", archive,
+                                         "application/gzip")
+        except Exception as exc:  # noqa: BLE001 - restyling is a bonus; the clips are done
+            log.warning("job %s: could not save the analysis bundle: %s", job.id, exc)
     db.finish(conn, job.id, clips, round(meta.get("duration") or 0) or None,
-              manifest.get("source_kit"))
+              manifest.get("source_kit"), bundle_path=bundle_path, parent_job_id=job.parent_job_id)
     log.info("job %s: done, %d clips", job.id, len(clips))
 
     # Sources and renders are in storage now; keep the disk for the next job
@@ -136,11 +163,12 @@ def _progress(clips_dir: Path, clip_count: int) -> tuple[str, int]:
 
 
 def _upload_clip(entry: dict, job: db.Job, clips_dir: Path, storage: Storage) -> dict:
-    rank = int(entry["index"])
+    index = int(entry["index"])
+    rank = job.only_rank or index  # a restyle renders one clip as clip_01 but keeps its rank
     video = Path(entry["video_path"])
     srt = Path(entry["srt_path"]) if entry.get("srt_path") else None
     cover = Path(entry["cover_path"]) if entry.get("cover_path") else None
-    thumb = clips_dir / f"clip_{rank:02d}.jpg"
+    thumb = clips_dir / f"clip_{index:02d}.jpg"
     _thumbnail(video, thumb)
 
     prefix = f"{job.user_id}/{job.id}/clip_{rank:02d}"

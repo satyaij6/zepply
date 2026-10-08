@@ -16,6 +16,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
     select: {
       id: true, title: true, sourceKind: true, sourceUrl: true, language: true, clipCount: true, style: true,
       captionPos: true, layout: true, effects: true, broll: true, sourceKit: true,
+      template: true, ctaKeyword: true, triggerId: true, bundlePath: true, parentJobId: true, onlyRank: true,
       status: true, stage: true, progress: true, error: true, sourceSeconds: true,
       createdAt: true, startedAt: true, finishedAt: true,
       clips: { orderBy: { rank: "asc" } },
@@ -23,13 +24,35 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
   });
   if (!job) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const urls = await signedRenderUrls(job.clips.flatMap((c) => [c.videoPath, c.thumbPath, c.captionsPath, c.coverPath])).catch((e) => {
+  // Restyled takes of these clips (finished), and restyles still being made
+  const clipIds = job.clips.map((c) => c.id);
+  const [versions, restyling] = await Promise.all([
+    clipIds.length
+      ? prisma.clip.findMany({
+          where: { variantOf: { in: clipIds }, job: { userId, status: "DONE" } },
+          orderBy: { createdAt: "desc" },
+          select: { id: true, variantOf: true, videoPath: true, coverPath: true, title: true, rank: true, job: { select: { template: true, style: true } } },
+        })
+      : Promise.resolve([]),
+    prisma.clipJob.findMany({
+      where: { userId, parentJobId: job.parentJobId ?? job.id, status: { in: ["QUEUED", "RUNNING"] } },
+      select: { id: true, onlyRank: true, template: true, progress: true, status: true },
+    }),
+  ]);
+
+  const urls = await signedRenderUrls([
+    ...job.clips.flatMap((c) => [c.videoPath, c.thumbPath, c.captionsPath, c.coverPath]),
+    ...versions.flatMap((v) => [v.videoPath, v.coverPath]),
+  ]).catch((e) => {
     console.error("create/jobs/[id]: could not sign clip URLs", e);
     return new Map<string, string>();
   });
 
+  const { bundlePath, ...visible } = job;
   return NextResponse.json({
-    ...job,
+    ...visible,
+    canRestyle: !!bundlePath || !!job.parentJobId,
+    restyling: restyling.map((r) => ({ id: r.id, rank: r.onlyRank, template: r.template, progress: r.progress, status: r.status })),
     clips: job.clips.map(({ videoPath, thumbPath, captionsPath, coverPath, ...clip }) => {
       const video = urls.get(videoPath) ?? null;
       const cover = (coverPath && urls.get(coverPath)) ?? null;
@@ -42,6 +65,19 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
         captionsUrl: (captionsPath && urls.get(captionsPath)) ?? null,
         coverUrl: cover,
         coverDownloadUrl: cover && `${cover}&download=${encodeURIComponent(`${slug(clip.title) || "clip"}-${clip.rank}-cover.jpg`)}`,
+        versions: versions
+          .filter((v) => v.variantOf === clip.id)
+          .map((v) => {
+            const vid = urls.get(v.videoPath) ?? null;
+            return {
+              id: v.id,
+              template: v.job.template,
+              style: v.job.style,
+              videoUrl: vid,
+              downloadUrl: vid && `${vid}&download=${encodeURIComponent(`${slug(clip.title) || "clip"}-${clip.rank}-${v.job.template}.mp4`)}`,
+              coverUrl: (v.coverPath && urls.get(v.coverPath)) ?? null,
+            };
+          }),
       };
     }),
   });

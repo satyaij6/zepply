@@ -137,7 +137,7 @@ def make_beats(timed: list[tuple[float, float, str, int]], *, max_words: int = 4
 
 
 def choose_heroes(beats: list[Beat], energy: dict[int, float], timed, *,
-                  min_gap: float = 3.5) -> None:
+                  min_gap: float = 3.5, threshold: float = 0.9) -> None:
     """At most one big word per beat, spaced out, picked by loudness and length."""
     index_of = {(round(a, 3), text): gi for a, _, text, gi in timed}
     values = list(energy.values())
@@ -158,7 +158,7 @@ def choose_heroes(beats: list[Beat], energy: dict[int, float], timed, *,
             score = z + 0.12 * min(len(word), 10) + (0.8 if any(c.isdigit() for c in word) else 0.0)
             if score > best_score:
                 best, best_score = k, score
-        if best is None or best_score < 0.9:
+        if best is None or best_score < threshold:
             continue
         beat.hero = best
         word = _plain(beat.words[best][2])
@@ -513,3 +513,111 @@ def _bracket(beat: Beat, idx: list[int], texts: list[str], bid: str, parts: list
 
 def summary_json(layer: Layer | None) -> str:
     return json.dumps(layer.summary if layer else {})
+
+
+# ------------------------------------------------------------------ line modes
+
+LINE_MODES = ("karaoke", "pill", "emphasis", "caps")
+# Where a caption block's bottom edge sits, by caption position. Instagram's
+# own UI covers roughly the bottom 280 px, so "bottom" stops above it.
+ANCHORS = {"bottom": 1610, "center": 1150, "top": 560}
+CARD_ANCHOR = 950          # between the headline panel and the speaker card
+
+
+def build_lines(plan: ClipPlan, words: list[Word], settings: Settings, *, mode: str,
+                audio: Path | None, accent: str = "#3888F0", script: str = "roman",
+                anchor_y: int | None = None) -> Layer | None:
+    """
+    Centred caption lines in one of the creator styles:
+
+    karaoke   bold words appear as spoken; the word being said sits in a white box
+    pill      the whole phrase in a dark rounded pill, one phrase at a time
+    emphasis  a small line, then the phrase's key word big in the accent colour
+    caps      uppercase, with the key word in yellow
+
+    Layout is left to the browser's own line wrapping inside a fixed-width
+    centred block -- deterministic, because every capture process loads the
+    same fonts -- so nothing here needs measuring.
+    """
+    if mode not in LINE_MODES:
+        raise ValueError(f"unknown caption mode {mode!r}")
+    timed = clip_words(plan, words, script)
+    if len(timed) < 2:
+        return None
+    beats = make_beats(timed, max_words=3 if mode in ("karaoke", "caps") else 4)
+    energy: dict[int, float] = {}
+    if audio is not None and audio.exists() and mode in ("emphasis", "caps"):
+        from .emphasis import word_energy
+
+        by_i = {w.i: w for w in words}
+        energy = word_energy(audio, [by_i[gi] for *_, gi in timed if gi in by_i])
+    if mode in ("emphasis", "caps"):
+        choose_heroes(beats, energy, timed, min_gap=0.0, threshold=0.4)
+
+    bottom = H - (anchor_y or ANCHORS.get(settings.caption_pos, ANCHORS["bottom"]))
+    parts, calls = [], []
+    for n, beat in enumerate(beats):
+        bid = f"kb{n}"
+        texts = [t.upper() if mode == "caps" else t for _, _, t in beat.words]
+        last_in = max(a for a, _, _ in beat.words)
+        exit_t = max(beat.end - 0.1, last_in + 0.08)
+        pop = lambda a: max(0.02, min(0.1, exit_t - a - 0.01))  # noqa: E731
+
+        def word(k: int, cls: str = "w") -> str:
+            box = '<span class="bx"></span>' if mode == "karaoke" else ""
+            return f'<span class="{cls}" id="{bid}w{k}">{box}{_esc(texts[k])}</span>'
+
+        if mode == "pill":
+            parts.append(f'<div class="cl" id="{bid}" style="bottom:{bottom}px"><span class="pill">'
+                         + " ".join(_esc(t) for t in texts) + "</span></div>")
+            calls.append(f'tl.fromTo("#{bid} .pill", {{opacity:0}}, {{opacity:1, duration:{pop(beat.start):.3f}}}, '
+                         f'{_q(beat.start)});')
+            calls.append(f'tl.to("#{bid} .pill", {{opacity:0, duration:0.08}}, {_q(exit_t)});')
+            continue
+
+        hero = beat.hero if mode in ("emphasis", "caps") else None
+        if mode == "emphasis" and hero is not None:
+            small = " ".join(word(k) for k in range(len(texts)) if k != hero)
+            inner = ((f'<div class="row small">{small}</div>' if small else "")
+                     + f'<div class="row big">{word(hero, "w hero")}</div>')
+        else:
+            inner = '<div class="row">' + " ".join(
+                word(k, "w hero" if k == hero else "w") for k in range(len(texts))) + "</div>"
+        parts.append(f'<div class="cl cl-{mode}" id="{bid}" style="bottom:{bottom}px">{inner}</div>')
+
+        for k, (a, _, _) in enumerate(beat.words):
+            calls.append(f'tl.fromTo("#{bid}w{k}", {{opacity:0, scale:0.94}}, {{opacity:1, scale:1, '
+                         f'duration:{pop(a):.3f}, ease:"power2.out"}}, {_q(a)});')
+            if mode == "karaoke":
+                # This word is lit from its start until the next word starts.
+                calls.append(f'tl.fromTo("#{bid}w{k} .bx", {{opacity:0}}, {{opacity:1, duration:0.04}}, {_q(a)});')
+                calls.append(f'tl.fromTo("#{bid}w{k}", {{color:"#FFFFFF"}}, {{color:"#111111", duration:0.04}}, {_q(a)});')
+                if k + 1 < len(beat.words):
+                    nxt = beat.words[k + 1][0]
+                    calls.append(f'tl.to("#{bid}w{k} .bx", {{opacity:0, duration:0.04}}, {_q(nxt)});')
+                    calls.append(f'tl.to("#{bid}w{k}", {{color:"#FFFFFF", duration:0.04}}, {_q(nxt)});')
+        calls.append(f'tl.to("#{bid} .w", {{opacity:0, duration:0.08}}, {_q(exit_t)});')
+
+    css = f"""
+#kin {{ position: absolute; inset: 0; pointer-events: none; z-index: 50; --kin-accent: {accent}; }}
+#kin .cl {{ position: absolute; left: {SIDE}px; right: {SIDE}px; display: flex; flex-direction: column;
+  align-items: center; gap: 6px; text-align: center; color: #FFFFFF; line-height: 1.08;
+  font-family: "Inter Tight", "Noto Sans Telugu", sans-serif;
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.5), 0 3px 16px rgba(0, 0, 0, 0.45); }}
+#kin .row {{ display: flex; flex-wrap: wrap; justify-content: center; column-gap: 0.28em; row-gap: 4px; }}
+#kin .w {{ position: relative; display: inline-block; transform-origin: 50% 60%; }}
+#kin .pill {{ display: inline-block; max-width: 100%; padding: 12px 26px; border-radius: 18px;
+  background: rgba(34, 34, 34, 0.9); font-size: 46px; font-weight: 600; text-shadow: none; }}
+#kin .cl-karaoke {{ font-size: 76px; font-weight: 800; letter-spacing: -0.02em; }}
+#kin .cl-karaoke .w {{ padding: 0 0.14em; }}
+#kin .cl-karaoke .bx {{ position: absolute; inset: 0.02em 0 -0.04em; z-index: -1; border-radius: 12px;
+  background: #FFFFFF; opacity: 0; }}
+#kin .cl-emphasis {{ font-size: 58px; font-weight: 600; }}
+#kin .cl-emphasis .small {{ font-size: 52px; font-weight: 500; }}
+#kin .cl-emphasis .big {{ font-size: 124px; font-weight: 700; letter-spacing: -0.03em; color: var(--kin-accent); }}
+#kin .cl-caps {{ font-size: 66px; font-weight: 800; letter-spacing: 0.01em; }}
+#kin .cl-caps .hero {{ color: #FFE11A; }}
+"""
+    log.info("captions: %s, %d phrases", mode, len(beats))
+    return Layer(html='<div id="kin">\n' + "\n".join(parts) + "\n</div>", css=css,
+                 js="\n".join(calls), summary={"beats": len(beats), "mode": mode})

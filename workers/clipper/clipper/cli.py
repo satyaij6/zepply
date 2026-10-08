@@ -60,18 +60,59 @@ def _load_regions(paths) -> tuple[list[Region], list[Region]]:
     )
 
 
-def cmd_run(args: argparse.Namespace) -> int:
-    settings = load_settings(
-        profile=args.profile, top_n=args.top, keep_top=args.keep_top,
-        score_model=args.model, caption_pos=args.caption_pos,
-        style_preset=args.style_preset,
+def _settings(args: argparse.Namespace, **extra):
+    """Settings from the style flags that run and restyle share."""
+    return load_settings(
+        caption_pos=args.caption_pos, style_preset=args.style_preset,
         reframe=(False if args.no_reframe else None),
         layout=args.layout, render_workers=args.render_workers,
         punch_ins=(False if args.no_effects else None),
         postkit=(False if args.no_postkit else None), niche=args.niche,
         broll=(True if args.broll else None), broll_accent=args.accent,
         broll_keep_work=(True if args.keep_broll else None),
+        broll_look=args.look, card_layout=(True if args.card else None),
+        cta_keyword=args.cta_keyword, canvas=args.canvas, **extra,
     )
+
+
+def cmd_restyle(args: argparse.Namespace) -> int:
+    """
+    Re-render one clip of a finished run in another style, from its bundle.
+
+    No transcription, scoring or face detection: those come from the bundle
+    (clipper/bundle.py). The source is fetched again for its pixels and audio.
+    """
+    from . import bundle
+    from .config import CACHE_DIR
+
+    settings = _settings(args, top_n=1)
+    paths = paths_for(args.name or "restyle", Path(args.out) if args.out else None)
+    paths.ensure()
+    # Audio and the media file only; the proxy comes from the bundle, because
+    # the face cache is keyed by that exact file.
+    meta = ingest(args.source, paths, make_proxy=False, force=True)
+    bundle.unpack(Path(args.bundle), paths, audio_sha256=meta.audio_sha256)
+    words = words_from_json(read_json(paths.transcript, stage="restyle",
+                                      produced_by="the original run")["words"])
+    plans = [ClipPlan.from_dict(d) for d in
+             read_json(paths.ranked, stage="restyle", produced_by="the original run")["plans"]]
+    if not 1 <= args.rank <= len(plans):
+        log.error("restyle: the run has %d clips; there is no clip %d", len(plans), args.rank)
+        return 1
+    rendered = cut_plans([plans[args.rank - 1]], words, Path(meta.media_path), paths, settings,
+                         top_n=1, burn_captions=not args.no_captions,
+                         asr_cache=CACHE_DIR / f"{meta.audio_sha256}.json",
+                         kit=bundle.kit_for_rank(paths, args.rank))
+    if not rendered:
+        log.error("restyle: clip %d did not render", args.rank)
+        return 1
+    log.info("restyle: done -> %s", paths.root)
+    return 0
+
+
+def cmd_run(args: argparse.Namespace) -> int:
+    settings = _settings(args, profile=args.profile, top_n=args.top, keep_top=args.keep_top,
+                         score_model=args.model)
     name = args.name or (name_for_url(args.source) if "://" in args.source
                          else slugify(Path(args.source).stem))
     paths = paths_for(name, Path(args.out) if args.out else None)
@@ -288,6 +329,39 @@ def cmd_explain(args: argparse.Namespace) -> int:
     return 0
 
 
+def _add_style_args(p: argparse.ArgumentParser) -> None:
+    """The look of the clips: shared by run and restyle."""
+    p.add_argument("--caption-pos", choices=["bottom", "center", "top"])
+    p.add_argument("--style", dest="style_preset",
+                   help="layout preset from styles/ (default clean)")
+    p.add_argument("--device", default="auto",
+                   help="alignment device: auto (cuda if available), cuda, cpu")
+    p.add_argument("--render-workers", type=int,
+                   help="clips to encode at once (default 3, 1 = serial)")
+    p.add_argument("--no-captions", action="store_true", help="skip burn-in")
+    p.add_argument("--no-reframe", action="store_true",
+                   help="centre crop instead of speaker tracking")
+    p.add_argument("--layout", choices=["auto", "single", "split", "screen"],
+                   help="auto splits the screen when both people are visible; "
+                          "screen = screen recording on top, webcam below")
+    p.add_argument("--no-effects", action="store_true",
+                   help="no zoom punch-ins on emphasised words")
+    p.add_argument("--no-postkit", action="store_true",
+                   help="skip titles, caption, hashtags and chapters")
+    p.add_argument("--niche", help="the creator's niche, for the post copy")
+    p.add_argument("--broll", action="store_true",
+                   help="add storytelling motion-graphics B-roll (Claude + HyperFrames)")
+    p.add_argument("--accent", help="brand accent colour for the B-roll, e.g. #FF5A1F")
+    p.add_argument("--keep-broll", action="store_true",
+                   help="keep each clip's HyperFrames project for review")
+    p.add_argument("--look", choices=["editorial", "explainer", "signal"],
+                   help="the B-roll designer's look (default editorial)")
+    p.add_argument("--card", action="store_true",
+                   help="'Comment for link' layout: speaker in a card on a brand canvas")
+    p.add_argument("--cta-keyword", help="end card: Comment WORD for the link")
+    p.add_argument("--canvas", help="canvas colour for --card (default: from the accent)")
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="clipper", description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -305,36 +379,22 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--keep-top", type=int, help="prefilter survivors (default 15)")
     run.add_argument("--profile", choices=sorted(PROFILES), help="prefilter weights")
     run.add_argument("--model", help="scoring model (default claude-sonnet-5)")
-    run.add_argument("--caption-pos", choices=["bottom", "center", "top"])
-    run.add_argument("--style", dest="style_preset",
-                     help="layout preset from styles/ (default clean)")
-    run.add_argument("--device", default="auto",
-                     help="alignment device: auto (cuda if available), cuda, cpu")
-    run.add_argument("--render-workers", type=int,
-                     help="clips to encode at once (default 3, 1 = serial)")
-    run.add_argument("--no-captions", action="store_true", help="skip burn-in")
-    run.add_argument("--no-reframe", action="store_true",
-                     help="centre crop instead of speaker tracking")
-    run.add_argument("--layout", choices=["auto", "single", "split", "screen"],
-                     help="auto splits the screen when both people are visible; "
-                          "screen = screen recording on top, webcam below")
-    run.add_argument("--no-effects", action="store_true",
-                     help="no zoom punch-ins on emphasised words")
-    run.add_argument("--no-postkit", action="store_true",
-                     help="skip titles, caption, hashtags and chapters")
-    run.add_argument("--niche", help="the creator's niche, for the post copy")
-    run.add_argument("--broll", action="store_true",
-                     help="add storytelling motion-graphics B-roll (Claude + HyperFrames)")
-    run.add_argument("--accent", help="brand accent colour for the B-roll, e.g. #FF5A1F")
-    run.add_argument("--keep-broll", action="store_true",
-                     help="keep each clip's HyperFrames project for review")
     run.add_argument("--debug-reframe", action="store_true",
                      help="also write proxy overlays showing the crop window")
     run.add_argument("--no-cache", action="store_true", help="ignore the ASR cache")
     run.add_argument("--force", action="store_true", help="re-ingest even if present")
     run.add_argument("--dry-run", action="store_true",
                      help="stop before spending LLM tokens")
+    _add_style_args(run)
     run.set_defaults(func=cmd_run)
+
+    rs = sub.add_parser("restyle", help="re-render one clip of a run in another style")
+    rs.add_argument("source", help="the same media file or URL the run used")
+    rs.add_argument("--bundle", required=True, help="the run's analysis bundle (.tar.gz or a folder)")
+    rs.add_argument("--rank", type=int, required=True, help="which clip, 1 = the best")
+    rs.add_argument("--name", help="output folder name (default: restyle)")
+    _add_style_args(rs)
+    rs.set_defaults(func=cmd_restyle)
 
     rej = sub.add_parser("reject", help="record a manual rejection")
     rej.add_argument("video")

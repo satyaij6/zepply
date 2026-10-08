@@ -12,6 +12,8 @@ export type JobRow = {
   progress: number;
   error: string | null;
   clipCount: number;
+  /** Edit template value (lib/clip-templates.ts) */
+  template: string;
   createdAt: string;
   finishedAt: string | null;
   _count: { clips: number };
@@ -36,6 +38,8 @@ export type ClipRow = {
   captionsUrl: string | null;
   coverUrl: string | null;
   coverDownloadUrl: string | null;
+  /** Restyled takes of this clip */
+  versions: { id: string; template: string; style: string; videoUrl: string | null; downloadUrl: string | null; coverUrl: string | null }[];
 };
 
 /** One job with its clips (GET /api/create/jobs/[id]). */
@@ -48,6 +52,10 @@ export type JobDetail = Omit<JobRow, "_count"> & {
   sourceSeconds: number | null;
   sourceKit: SourceKit | null;
   startedAt: string | null;
+  ctaKeyword: string | null;
+  triggerId: string | null;
+  canRestyle: boolean;
+  restyling: { id: string; rank: number | null; template: string; progress: number; status: JobStatus }[];
   clips: ClipRow[];
 };
 

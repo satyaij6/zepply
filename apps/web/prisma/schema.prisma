@@ -137,6 +137,21 @@ model ClipJob {
   effects       Boolean        @default(true)
   /// Storytelling motion-graphics B-roll, designed per clip (adds minutes per clip)
   broll         Boolean        @default(false)
+  /// Edit template the user picked (lib/clip-templates.ts); the options above hold what it resolved to
+  template      String         @default("simple")
+  /// B-roll look: editorial | explainer | signal
+  brollLook     String         @default("editorial")
+  /// "Comment for link" layout: speaker in a card on the brand canvas
+  cardLayout    Boolean        @default(false)
+  /// End card keyword ("Comment WORD"); with ctaLink, Zepply also creates the comment->DM trigger
+  ctaKeyword    String?
+  ctaLink       String?
+  triggerId     String?
+  /// Saved analysis (transcript, picks, faces, proxy) in "clip-renders", so a clip can be restyled
+  bundlePath    String?
+  /// Set on a restyle: the job whose analysis it reuses, and the one clip (by rank) it re-renders
+  parentJobId   String?
+  onlyRank      Int?
   /// Post copy for the long video itself: { titles, description, chapters: [{ start, title }] }
   sourceKit     Json?
   status        ClipJobStatus  @default(QUEUED)
@@ -186,6 +201,8 @@ model Clip {
   hashtags        String[] @default([])
   rejected        Boolean  @default(false)
   rejectReason    String?
+  /// Set on a restyled version: the clip it is a new take of
+  variantOf       String?
   createdAt       DateTime @default(now())
 
   @@index([jobId, rank])

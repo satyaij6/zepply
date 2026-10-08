@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Film, Scissors, Wand2 } from "lucide-react";
+import { ArrowRight, Film, MessageCircle, Scissors, Wand2 } from "lucide-react";
 import { isDemo } from "@/components/layout/DashboardLayout";
 import { ReelCard, type ReelRow } from "@/components/create/promo/Generating";
 
@@ -66,6 +66,16 @@ export default function CreatePage() {
             <div className="min-w-0 flex-1">
               <p className="text-[15px] font-semibold">Long video to shorts</p>
               <p className="mt-1 text-sm text-app-muted">A podcast or YouTube video becomes clips, each with a cover, caption and hashtags</p>
+            </div>
+            <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-app-faint transition group-hover:translate-x-0.5 group-hover:text-app-ink" />
+          </Link>
+          <Link href="/dashboard/create/clips?template=comment" className="group flex items-start gap-4 rounded-3xl border border-app-line bg-app-card p-6 transition hover:border-zinc-300 hover:bg-white">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-app-side text-white">
+              <MessageCircle className="h-[18px] w-[18px]" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-[15px] font-semibold">Comment-for-link reel</p>
+              <p className="mt-1 text-sm text-app-muted">Your brand colour, headlines, and a “Comment WORD” ending; Zepply DMs the link</p>
             </div>
             <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-app-faint transition group-hover:translate-x-0.5 group-hover:text-app-ink" />
           </Link>
