@@ -75,7 +75,8 @@ function put(url: string, file: File, onProgress: (p: number) => void) {
   });
 }
 
-export function ClipsHome() {
+/** Create's home: "What do you want to make?" with the clip studio below. `footer` adds sections under "Your videos". */
+export function ClipsHome({ footer }: { footer?: ReactNode } = {}) {
   const router = useRouter();
   const shell = useShellUser();
   const [demo] = useState(isDemo);
@@ -244,7 +245,6 @@ export function ClipsHome() {
       </div>
     );
   }
-  if (access === "invite") return <InviteOnly />;
   if (access === "error") {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center text-center">
@@ -253,6 +253,38 @@ export function ClipsHome() {
         <button type="button" onClick={() => window.location.reload()} className="mt-5 h-10 rounded-xl bg-app-ink px-5 text-sm font-semibold text-white">
           Try again
         </button>
+      </div>
+    );
+  }
+
+  const header = (
+    <>
+      <h1 className="font-display text-[clamp(26px,2.6vw,34px)] font-semibold leading-tight tracking-[-0.03em]">What do you want to make?</h1>
+      <p className="mt-1.5 text-[15px] text-app-muted">Pick a starting point. Everything below stays editable.</p>
+
+      <div className="mt-5 flex flex-wrap gap-2.5">
+        <ModeChip active={!template.cta} onClick={() => template.cta && chooseTemplate(DEFAULT_TEMPLATE)} icon={Scissors}>
+          Long video to shorts
+        </ModeChip>
+        <ModeChip active={template.cta} onClick={() => chooseTemplate("comment")} icon={MessageCircle}>
+          Comment-for-link reel
+        </ModeChip>
+        <ModeChip href="/dashboard/create/promo" icon={Megaphone}>
+          Promo reel
+        </ModeChip>
+        <ModeChip icon={Film} soon>
+          Raw clips to a reel
+        </ModeChip>
+      </div>
+    </>
+  );
+
+  if (access === "invite") {
+    return (
+      <div className="pb-16 pt-2">
+        {header}
+        <InviteOnly />
+        {footer}
       </div>
     );
   }
@@ -270,20 +302,7 @@ export function ClipsHome() {
 
   return (
     <div className="pb-16 pt-2">
-      <h1 className="font-display text-[clamp(26px,2.6vw,34px)] font-semibold leading-tight tracking-[-0.03em]">What do you want to make?</h1>
-      <p className="mt-1.5 text-[15px] text-app-muted">Pick a starting point. Everything below stays editable.</p>
-
-      <div className="mt-5 flex flex-wrap gap-2.5">
-        <ModeChip active={!template.cta} onClick={() => template.cta && chooseTemplate(DEFAULT_TEMPLATE)} icon={Scissors}>
-          Long video to shorts
-        </ModeChip>
-        <ModeChip active={template.cta} onClick={() => chooseTemplate("comment")} icon={MessageCircle}>
-          Comment-for-link reel
-        </ModeChip>
-        <ModeChip href="/dashboard/create/promo" icon={Megaphone}>
-          Promo reel
-        </ModeChip>
-      </div>
+      {header}
 
       <div className="mt-7 grid grid-cols-[minmax(0,1fr)] gap-7 xl:grid-cols-[minmax(0,1fr)_380px]">
         {/* ---------------------------------------------------------------- main column */}
@@ -639,6 +658,7 @@ export function ClipsHome() {
               </ul>
             )}
           </section>
+          {footer}
         </div>
 
         {/* ---------------------------------------------------------------- side rail */}
@@ -701,10 +721,17 @@ export function ClipsHome() {
   );
 }
 
-function ModeChip({ children, icon: Icon, active = false, onClick, href }: { children: ReactNode; icon: typeof Scissors; active?: boolean; onClick?: () => void; href?: string }) {
+function ModeChip({ children, icon: Icon, active = false, onClick, href, soon = false }: { children: ReactNode; icon: typeof Scissors; active?: boolean; onClick?: () => void; href?: string; soon?: boolean }) {
   const cls = `inline-flex h-11 items-center gap-2 rounded-xl border px-4 text-[15px] font-medium transition ${
     active ? "border-emerald-500 bg-emerald-50 text-app-ink" : "border-app-line bg-white text-app-ink hover:border-zinc-300"
   }`;
+  if (soon)
+    return (
+      <span className="inline-flex h-11 cursor-default items-center gap-2 rounded-xl border border-dashed border-app-line px-4 text-[15px] font-medium text-app-faint">
+        <Icon className="h-4 w-4" /> {children}
+        <span className="rounded-full border border-app-line px-2 py-px text-[10px] font-semibold uppercase tracking-wider">Soon</span>
+      </span>
+    );
   if (href)
     return (
       <Link href={href} className={cls}>
@@ -796,7 +823,7 @@ function StatusDot({ status }: { status: JobRow["status"] }) {
 
 function InviteOnly() {
   return (
-    <div className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center text-center">
+    <div className="mx-auto mt-7 flex max-w-xl flex-col items-center rounded-[24px] border border-app-line bg-app-card px-6 py-12 text-center">
       <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-app-side text-white">
         <Clapperboard className="h-5 w-5" />
       </span>

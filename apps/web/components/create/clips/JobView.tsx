@@ -72,8 +72,8 @@ export function JobView({ id }: { id: string }) {
   }
 
   const back = (
-    <Link href={`/dashboard/create/clips${demo ? "?demo=1" : ""}`} className="inline-flex items-center gap-1.5 text-sm font-medium text-app-muted transition hover:text-app-ink">
-      <ArrowLeft className="h-4 w-4" /> Long video to shorts
+    <Link href={`/dashboard/create${demo ? "?demo=1" : ""}`} className="inline-flex items-center gap-1.5 text-sm font-medium text-app-muted transition hover:text-app-ink">
+      <ArrowLeft className="h-4 w-4" /> Create
     </Link>
   );
 
